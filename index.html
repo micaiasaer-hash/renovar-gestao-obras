@@ -2403,15 +2403,6 @@ function delFx(i){if(!confirm('Excluir?'))return;db.fluxo.splice(i,1);save();ren
   }catch(e){console.error('Seed oficina:',e);}
 })();
 
-load().then(function(){ render(); });
-+sub.toFixed(2));}
-      else totalInfra+=sub;
-    }
-  });
-  var total=totalPts+totalInfra;
-  // Atualiza subtotal pontos
-  var spEl=document.getElementById('ltESubtotalPts');
-  if(spEl) spEl.textContent=ptsResumo.length?'Subtotal pontos: '+ptsResumo.join(' · ')+' → R
 
 function calcGVT(){
   var servicos=getServicoGVT();
@@ -3720,13 +3711,6 @@ function delFx(i){if(!confirm('Excluir?'))return;db.fluxo.splice(i,1);save();ren
   }catch(e){console.error('Seed oficina:',e);}
 })();
 
-load().then(function(){ render(); });
-+totalPts.toFixed(2):'';
-  // Atualiza total box
-  var totEl=document.getElementById('ltETotal');
-  if(totEl) totEl.textContent='R$ '+total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  return total;
-}
 
 function getServicoGVT(){
   var n=function(id){return Number((document.getElementById(id)&&document.getElementById(id).value)||0);};
@@ -5237,3 +5221,4 @@ window.load = async function(){
 </div>
 </body>
 </html>
+                                                                                                          
