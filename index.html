@@ -893,6 +893,9 @@ window.SERVICO_MAP={
   Pi: { cats:['Pinturas'] },
   E:  { cats:['Instalações elétricas'] }
 };
+
+window.popularSelectRef = function(cod){
+  var SMAP = window.SERVICO_MAP;
   var map = SMAP[cod]; if(!map) return;
   var baseEl = document.getElementById('lt'+cod+'Base');
   var base = baseEl ? baseEl.value : 'RD';
