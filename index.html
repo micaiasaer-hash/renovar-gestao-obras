@@ -1092,7 +1092,17 @@ function calcEletrica(){
   itens.forEach(function(it){
     var qtd=n(it.id), pu=n(it.puId), sub=qtd*pu;
     if(qtd>0){
-      if(ptIds.indexOf(it.id)>-1){totalPts+=sub;ptsResumo.push(it.label+': '+qtd+' pts = R
+      if(ptIds.indexOf(it.id)>-1){totalPts+=sub;ptsResumo.push(it.label+': '+qtd+' pts = R$'+sub.toFixed(2));}
+      else{totalInfra+=sub;}
+    }
+  });
+  var spEl=document.getElementById('ltESubtotalPts');
+  if(spEl) spEl.textContent=ptsResumo.length?'Subtotal pontos: '+ptsResumo.join(' · ')+' → R$'+totalPts.toFixed(2):'';
+  if(g('ltESubtotalGrid')) g('ltESubtotalGrid').innerHTML=
+    '<div class="mc"><div class="lb">Pontos elétricos</div><div class="vl">'+fmt(totalPts)+'</div></div>'+
+    '<div class="mc"><div class="lb">Infraestrutura</div><div class="vl">'+fmt(totalInfra)+'</div></div>'+
+    '<div class="mc"><div class="lb">Total elétrica</div><div class="vl" style="font-weight:700">'+fmt(totalPts+totalInfra)+'</div></div>';
+}
 
 function calcGVT(){
   var servicos=getServicoGVT();
