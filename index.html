@@ -1042,7 +1042,17 @@ function calcEletrica(){
   itens.forEach(function(it){
     var qtd=n(it.id), pu=n(it.puId), sub=qtd*pu;
     if(qtd>0){
-      if(ptIds.indexOf(it.id)>-1){totalPts+=sub;ptsResumo.push(it.label+': '+qtd+' pts = R
+      if(ptIds.indexOf(it.id)>-1){totalPts+=sub;ptsResumo.push(it.label+': '+qtd+' pts = R$'+sub.toFixed(2));}
+      else{totalInfra+=sub;}
+    }
+  });
+  var total=totalPts+totalInfra;
+  var resumoHtml=ptsResumo.map(function(r){return '<li>'+r+'</li>';}).join('');
+  g('ltEResumo').innerHTML='<ul>'+resumoHtml+'</ul>';
+  g('ltETotalPts').textContent='R$'+totalPts.toFixed(2);
+  g('ltETotalInfra').textContent='R$'+totalInfra.toFixed(2);
+  g('ltETotal').textContent='R$'+total.toFixed(2);
+}
 
 function calcGVT(){
   var servicos=getServicoGVT();
