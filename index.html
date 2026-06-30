@@ -1048,10 +1048,11 @@ function calcEletrica(){
   });
   var total=totalPts+totalInfra;
   var resumoHtml=ptsResumo.map(function(r){return '<li>'+r+'</li>';}).join('');
-  g('ltEResumo').innerHTML='<ul>'+resumoHtml+'</ul>';
-  g('ltETotalPts').textContent='R$'+totalPts.toFixed(2);
-  g('ltETotalInfra').textContent='R$'+totalInfra.toFixed(2);
-  g('ltETotal').textContent='R$'+total.toFixed(2);
+  var elResumo=g('ltEResumo'); if(elResumo) elResumo.innerHTML='<ul>'+resumoHtml+'</ul>';
+  var elPts=g('ltETotalPts'); if(elPts) elPts.textContent='R$'+totalPts.toFixed(2);
+  var elInfra=g('ltETotalInfra'); if(elInfra) elInfra.textContent='R$'+totalInfra.toFixed(2);
+  var elTot=g('ltETotal'); if(elTot) elTot.textContent='R$'+total.toFixed(2);
+  return total;
 }
 
 function calcGVT(){
