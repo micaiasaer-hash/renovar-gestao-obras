@@ -108,9 +108,9 @@ tr:hover td{background:#f8f9fa}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  const SUPA_URL = 'https://mintakzqspsfctbrnshh.supabase.co';
-  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pbnRha3pxc3BzZmN0YnJuc2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzUyMzUsImV4cCI6MjA5ODQxMTIzNX0.iwsOf1UWLDf666AK5tMvwJX3jysKVw4bRIomp2LN7Cg';
-  const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPA_URL = 'https://mintakzqspsfctbrnshh.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pbnRha3pxc3BzZmN0YnJuc2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzUyMzUsImV4cCI6MjA5ODQxMTIzNX0.iwsOf1UWLDf666AK5tMvwJX3jysKVw4bRIomp2LN7Cg';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 </script>
 </head>
 <body>
@@ -893,9 +893,6 @@ window.SERVICO_MAP={
   Pi: { cats:['Pinturas'] },
   E:  { cats:['Instalações elétricas'] }
 };
-
-window.popularSelectRef = function(cod){
-  var SMAP = window.SERVICO_MAP;
   var map = SMAP[cod]; if(!map) return;
   var baseEl = document.getElementById('lt'+cod+'Base');
   var base = baseEl ? baseEl.value : 'RD';
@@ -990,77 +987,27 @@ var pchart=null,pvchart=null;
 
 function save(){ /* Supabase - salva nas funções individuais */ }
 async function load(){
-  try {
-    var [orc,obras,mats,mos,inds,fluxo,dups,clis,colabs] = await Promise.all([
-      supa.from('orcamentos').select('*').order('created_at',{ascending:false}),
-      supa.from('obras').select('*').order('created_at',{ascending:false}),
-      supa.from('materiais').select('*'),
-      supa.from('mao_obra').select('*'),
-      supa.from('indiretos').select('*'),
-      supa.from('fluxo').select('*'),
-      supa.from('duplicatas').select('*'),
-      supa.from('clientes').select('*'),
-      supa.from('colaboradores').select('*')
-    ]);
-    db.orcamentos = (orc.data||[]).map(function(r){
-      var o=JSON.parse(JSON.stringify(r));
-      o.id=r.id; o.servicos=r.servicos||[];
-      o.endereco=r.endereco; o.obsGeral=r.obs_geral;
-      o.ocupado=r.ocup; o.voltagem=r.volt; o.eletrica=r.elet;
-      o.hidraulica=r.hidr; o.refrigeracao=r.refrig;
-      o.lt=r.lt||{}; return o;
-    });
-    db.obras = (obras.data||[]).map(function(r){
-      return {id:r.id,nome:r.nome,cliente:r.cliente,cidade:r.cidade,
-        endereco:r.endereco||'',responsavel:r.responsavel||'',
-        tipo:r.tipo,valor:Number(r.valor||0),
-        prevMat:Number(r.prev_mat||0),prevMO:Number(r.prev_mo||0),prevInd:Number(r.prev_ind||0),
-        inicio:r.inicio,fim:r.prazo,status:r.status||'Em andamento',
-        orcId:r.orcamento_id,finalizada:r.status==='Finalizada',
-        dataFinalizada:r.data_finalizada||null, _sbId:r.id};
-    });
-    db.materiais = (mats.data||[]).map(function(r){
-      return {id:r.id,obra:r.obra,data:r.data,forn:r.fornecedor,categ:r.categ,
-        desc:r.descricao,qtd:r.qtd,vunit:r.vunit,vtot:r.vtot,
-        pgto:r.nf||'',status:r.obs||'Pago', _sbId:r.id};
-    });
-    db.maoObra = (mos.data||[]).map(function(r){
-      return {id:r.id,obra:r.obra,nome:r.nome,funcao:r.func,
-        servico:r.periodo||'',data:r.data,valor:Number(r.valor||0),
-        status:r.forma||'Pago', _sbId:r.id};
-    });
-    db.indiretos = (inds.data||[]).map(function(r){
-      return {id:r.id,obra:r.obra,categ:r.categ,data:r.data,
-        desc:r.descricao,valor:Number(r.valor||0),
-        status:r.obs||'Pago', _sbId:r.id};
-    });
-    db.fluxo = (fluxo.data||[]).map(function(r){
-      return {id:r.id,obra:r.obra,tipo:r.descricao||'Entrada',
-        data:r.data,valor:Number(r.valor||0),obs:r.obs||'', _sbId:r.id};
-    });
-    db.duplicatas = (dups.data||[]).map(function(r){
-      var parcelas=[{venc:r.vencimento,valor:Number(r.valor||0),paga:r.status==='paga',
-        dataPgto:null,valorPago:Number(r.pago||0),comprovante:''}];
-      return {id:r.id,tipo:r.tipo,categ:'Material',desc:r.descricao,
-        parte:r.fornecedor,obraId:r.obra,valorTotal:Number(r.valor||0),
-        nParc:1,parcelas:parcelas,forma:r.forma||'Pix',nf:'',
-        lembrete:3,prioridade:'normal',notas:[], _sbId:r.id};
-    });
-    db.clientes = (clis.data||[]).map(function(r){
-      return {id:r.id,tipo:r.tipo,nome:r.nome,doc:r.doc,razao:r.razao,ie:r.ie,
-        tel:r.tel,email:r.email,contato:r.contato,telContato:r.tel_contato,
-        end:r.endereco,bairro:r.bairro,cidade:r.cidade,cep:r.cep,
-        obs:r.obs,cadastro:r.cadastro, _sbId:r.id};
-    });
-    db.colaboradores = (colabs.data||[]).map(function(r){
-      return {id:r.id,nome:r.nome,apelido:r.apelido,cpf:r.cpf,rg:r.rg,nasc:r.nasc,
-        tel:r.tel,email:r.email,func:r.func,tipo:r.tipo,espec:r.espec,
-        diaria:r.diaria,hora:r.hora,banco:r.banco,agencia:r.agencia,
-        conta:r.conta,pix:r.pix,pixTipo:r.pix_tipo,obs:r.obs,
-        cadastro:r.cadastro, _sbId:r.id};
-    });
-    if(db.obras.length) obraAtual=db.obras[0];
-  } catch(e){ console.error('Erro ao carregar:', e); }
+  var results = await Promise.all([
+    supa.from('clientes').select('*'),
+    supa.from('colaboradores').select('*'),
+    supa.from('orcamentos').select('*'),
+    supa.from('obras').select('*'),
+    supa.from('materiais').select('*'),
+    supa.from('mao_obra').select('*'),
+    supa.from('indiretos').select('*'),
+    supa.from('fluxo').select('*'),
+    supa.from('duplicatas').select('*')
+  ]);
+  db.clientes      = results[0].data || [];
+  db.colaboradores = results[1].data || [];
+  db.orcamentos    = results[2].data || [];
+  db.obras         = results[3].data || [];
+  db.materiais     = results[4].data || [];
+  db.maoObra       = results[5].data || [];
+  db.indiretos     = results[6].data || [];
+  db.fluxo         = results[7].data || [];
+  db.duplicatas    = results[8].data || [];
+  if(db.obras.length > 0) obraAtual = db.obras[0];
 }
 function fmt(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtP(v){return Number(v||0).toFixed(1)+'%';}
@@ -1092,17 +1039,7 @@ function calcEletrica(){
   itens.forEach(function(it){
     var qtd=n(it.id), pu=n(it.puId), sub=qtd*pu;
     if(qtd>0){
-      if(ptIds.indexOf(it.id)>-1){totalPts+=sub;ptsResumo.push(it.label+': '+qtd+' pts = R$'+sub.toFixed(2));}
-      else{totalInfra+=sub;}
-    }
-  });
-  var spEl=document.getElementById('ltESubtotalPts');
-  if(spEl) spEl.textContent=ptsResumo.length?'Subtotal pontos: '+ptsResumo.join(' · ')+' → R$'+totalPts.toFixed(2):'';
-  if(g('ltESubtotalGrid')) g('ltESubtotalGrid').innerHTML=
-    '<div class="mc"><div class="lb">Pontos elétricos</div><div class="vl">'+fmt(totalPts)+'</div></div>'+
-    '<div class="mc"><div class="lb">Infraestrutura</div><div class="vl">'+fmt(totalInfra)+'</div></div>'+
-    '<div class="mc"><div class="lb">Total elétrica</div><div class="vl" style="font-weight:700">'+fmt(totalPts+totalInfra)+'</div></div>';
-}
+      if(ptIds.indexOf(it.id)>-1){totalPts+=sub;ptsResumo.push(it.label+': '+qtd+' pts = R
 
 function calcGVT(){
   var servicos=getServicoGVT();
@@ -2337,363 +2274,123 @@ function salvarFx(){
 }
 function delFx(i){if(!confirm('Excluir?'))return;db.fluxo.splice(i,1);save();render();}
 
-// Seed removido — dados no Supabase
+// Limpa dados antigos da AutoCar do localStorage e reinicia limpo
+(function limparAutocar(){
+  try{
+    var s=localStorage.getItem('gestaoObrasV7');
+    if(s){
+      var p=JSON.parse(s);
+      if(p.db){
+        p.db.orcamentos=(p.db.orcamentos||[]).filter(function(o){return o.id!==1748000001;});
+        p.db.obras=(p.db.obras||[]).filter(function(o){return o.id!==1748000002;});
+        p.db.materiais=(p.db.materiais||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.maoObra=(p.db.maoObra||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.indiretos=(p.db.indiretos||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.fluxo=(p.db.fluxo||[]).filter(function(m){return m.obra!==1748000002;});
+        if(p.oid==1748000002)p.oid=null;
+        localStorage.setItem('gestaoObrasV7',JSON.stringify(p));
+      }
+    }
+  }catch(e){}
+})();
 
-// Seed removido — dados no Supabase
+// ── SEED: OFICINA MECÂNICA — PRANCHA A101 ────────────────────
+(function seedOficina(){
+  try{
+    var s=localStorage.getItem('gestaoObrasV7');
+    var p=s?JSON.parse(s):{db:{orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],clientes:[],colaboradores:[]}};
+    if(!p.db)p.db={orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],clientes:[],colaboradores:[]};
+    if(p.db.orcamentos.find(function(o){return o.id===1748100001;}))return;
 
+    // Serviços detalhados conforme proposta
+    var servicos=[
+      {nome:'Parede Drywall ST/70/ST — Adm + Halls',und:'m²',m2:101.61,pu:140.00,total:14225.40,obs:'Área de Espera (34,44m²), Adm (33,93m²), HO1+HO2 (33,24m²)'},
+      {nome:'Parede Drywall ST/70/RU — Banheiros',und:'m²',m2:37.02,pu:185.00,total:6848.70,obs:'BHO1 (18,51m²) e BHO2 (18,51m²) — placa resistente à umidade'},
+      {nome:'Forro Estruturado — Espera + Adm + Halls',und:'m²',m2:29.00,pu:99.00,total:2871.00,obs:'Espera 12m², Adm 11m², Halls 6m²'},
+      {nome:'Forro Aramado — Banheiros',und:'m²',m2:6.00,pu:75.00,total:450.00,obs:'BHO1 3m² + BHO2 3m² — verba mínima aplicável (<15m²)'},
+      {nome:'Sanca Drywall — Espera + Administrativo',und:'m lin.',m2:13.60,pu:40.00,total:544.00,obs:'Espera 7,00m + Adm 6,60m'},
+      {nome:'Rodapé Liso 10cm',und:'m lin.',m2:54.40,pu:75.00,total:4080.00,obs:'Espera 14m, Adm 13,2m, Halls 13,6m, BHOs 13,6m'}
+    ];
 
-// ═══════════════════════════════════════════════════════
-// SUPABASE CRUD — Salvar/Editar/Deletar no banco de dados
-// ═══════════════════════════════════════════════════════
+    var totalServicos=29019.10;
+    var ind=2000,lucroP=30,reservaP=5;
+    var custo=totalServicos+ind;
+    var reserva=custo*reservaP/100;
+    var lucro=custo*lucroP/100;
+    var preco=custo+reserva+lucro;
+    var margem=preco>0?(lucro/preco)*100:0;
 
-// Orçamentos
-var _origSalvarGVT = salvarGVT;
-salvarGVT = async function(gerarProposta) {
-  var nome = g('gNome').value.trim();
-  if(!nome){ alert('Informe o nome da obra.'); return; }
-  var calc = calcGVT();
-  var isEdit = ed.gvt !== null;
-  var existId = isEdit ? db.orcamentos[ed.gvt].id : null;
+    var orc={
+      id:1748100001,
+      nome:'Oficina Mecânica — Prancha A101',
+      cliente:'Jhonatan Micaias',
+      doc:'',
+      endereco:'',
+      cidade:'Belém - PA',
+      tipo:'Reforma comercial',
+      area:'202,00',
+      ocupado:'Não',
+      prazo:'2026-09-30',
+      contato:'Jhonatan Micaias',
+      tel:'',
+      resp:'Raiza Barbosa',
+      obsGeral:'Prancha A101 — Planta Baixa / Layout. Escala 1:50. Data projeto: 19/05/2026. 8 ambientes.',
+      inicio:'2026-06-01',
+      acesso:'Rampa',
+      horario:'Comercial',
+      apoio:'Andaime',
+      voltagem:'220V',
+      grau:'G2 — Médio',
+      eletrica:'Pendente',
+      hidraulica:'Pendente',
+      refrigeracao:'Pendente',
+      gas:'N/A',
+      projeto:'Sim',
+      art:'Pendente',
+      fotos:'',
+      lt:{
+        forro:{tipo:'Estruturado + Aramado',m2:35,pu:94.6,pd:3,la:'Não',obs:'Estruturado: Espera 12m², Adm 11m², Halls 6m². Aramado: BHO1 3m² + BHO2 3m²'},
+        drywall:{sist:'ST/70/ST e ST/70/RU',m2:138.63,pu:155,pd:3,la:'Não',obs:'ST/70/ST ambientes secos · ST/70/RU banheiros. Perfil 70mm.'},
+        naval:{tipo:'Painel Cego',m2:0,pu:0,h:0,cor:'',obs:''},
+        piso:{tipo:'Porcelanato retif. 60x60 (Adm+Halls) / Epóxi industrial (Oficina+Dep.)',m2:195.70,pu:0,rodape:'Liso 10cm',rodM:54.40,rodPU:75,obs:'FORA DO ESCOPO DRYWALL — orçar separadamente'},
+        pintura:{tipo:'Epóxi industrial + Látex PVA',parede:153.39,pu:0,teto:0,tpu:0,cor:'A definir'},
+        demolicao:{parede:0,piso:0,forro:'Não',entulho:'Sim',obs:''}
+      },
+      servicos:servicos,
+      ind:ind,
+      lucroP:lucroP,
+      reservaP:reservaP,
+      custo:custo,
+      reserva:reserva,
+      lucro:lucro,
+      preco:preco,
+      margem:margem,
+      obs:'Ambientes <15m² (BHO1, BHO2, HO1, HO2): verba mínima conforme prática comercial. SIGE BT: +6% sobre total. Cronograma estimado: 14 a 18 semanas. Valor à vista: R$29.019,10 · Cartão: R$32.007,28. Serviços fora do escopo drywall a orçar separadamente: pintura epóxi industrial (292,32m²), pintura látex PVA (153,39m²), piso porcelanato 60x60 (28,70m²), piso epóxi/concreto polido (167m²), revestimento cerâmico banheiros (37,02m²), instalações elétricas (62pts), hidrossanitárias, impermeabilização banheiros (6m²), caixa separadora água/óleo.',
+      status:'aguardando_aprovacao',
+      criado:'28/05/2026',
+      valorCartao:32007.28
+    };
 
-  var payload = {
-    nome:nome, cliente:g('gCliente').value, doc:g('gDoc').value,
-    endereco:g('gEnd').value, cidade:g('gCidade').value,
-    tipo:g('gTipo').value, area:parseFloat(g('gArea').value)||null,
-    ocup:g('gOcup').value, prazo:g('gPrazo').value||null,
-    contato:g('gContato').value, tel:g('gTel').value,
-    resp:g('gResp').value, obs_geral:g('gObsGeral').value,
-    inicio:g('gInicio').value||null, acesso:g('gAcesso').value,
-    horario:g('gHorario').value, apoio:g('gApoio').value,
-    volt:g('gVolt').value, grau:g('gGrau').value,
-    elet:g('gElet').value, hidr:g('gHidr').value,
-    refrig:g('gRefrig').value, gas:g('gGas').value,
-    projeto:g('gProjeto').value, art:g('gArt').value,
-    fotos:g('gFotos').value,
-    servicos:calc.servicos,
-    custo:calc.custo, preco:calc.preco, lucro:calc.lucro, margem:calc.margem,
-    status:'aguardando_aprovacao',
-    criado:new Date().toLocaleDateString('pt-BR')
-  };
+    // Cliente
+    if(!p.db.clientes)p.db.clientes=[];
+    if(!p.db.clientes.find(function(c){return c.nome==='Jhonatan Micaias';})){
+      p.db.clientes.push({
+        id:1748100010,nome:'Jhonatan Micaias',tipo:'Pessoa física',
+        doc:'',razao:'',ie:'',tel:'',email:'',
+        contato:'Jhonatan Micaias',telContato:'',
+        end:'',bairro:'',cidade:'Belém - PA',cep:'',
+        obs:'Cliente — Oficina Mecânica Comercial (Prancha A101)',
+        cadastro:'28/05/2026'
+      });
+    }
 
-  var res;
-  if(isEdit && existId){
-    res = await supa.from('orcamentos').update(payload).eq('id', existId).select().single();
-  } else {
-    res = await supa.from('orcamentos').insert(payload).select().single();
-  }
-  if(res.error){ alert('Erro ao salvar: ' + res.error.message); return; }
-
-  await load(); closeModal();
-  if(gerarProposta){
-    var idx = db.orcamentos.findIndex(function(x){ return x.id === res.data.id; });
-    renderOrcamentos();
-    if(idx>=0) gerarPropostaHTML(idx);
-  } else {
-    renderOrcamentos();
-    showPage('orcamentos');
-  }
-};
-
-// Obras
-var _origSalvarObra = salvarObra;
-salvarObra = async function() {
-  var nome = g('oNome').value.trim(); if(!nome){ alert('Informe o nome.'); return; }
-  var orc = ed._orcData || null;
-  var payload = {
-    nome:nome, cliente:g('oCliente').value, endereco:g('oEnd').value,
-    tipo: orc ? orc.tipo : 'Reforma',
-    valor:Number(g('oValor').value)||0,
-    prev_mat:orc&&orc.servicos?orc.servicos.reduce(function(a,s){return a+s.total*0.4;},0):0,
-    prev_mo:orc&&orc.servicos?orc.servicos.reduce(function(a,s){return a+s.total*0.55;},0):0,
-    prev_ind:orc?orc.ind:0,
-    inicio:g('oInicio').value||null, prazo:g('oFim').value||null,
-    status:'Em andamento',
-    orcamento_id: orc ? orc.id : null
-  };
-  var res = await supa.from('obras').insert(payload).select().single();
-  if(res.error){ alert('Erro ao criar obra: ' + res.error.message); return; }
-  if(orc){ await supa.from('orcamentos').update({status:'convertido'}).eq('id', orc.id); }
-  await load();
-  obraAtual = db.obras.find(function(o){ return o.id === res.data.id; }) || db.obras[0];
-  if(obraAtual && g('obraSelect')) g('obraSelect').value = obraAtual.id;
-  ed._orcData=null; ed._orcIdx=null;
-  closeModal(); render(); showPage('dash');
-  alert('✅ Obra "'+nome+'" criada com sucesso!');
-};
-
-// Materiais
-var _origSalvarMat = salvarMat;
-salvarMat = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  if(!g('mDesc').value.trim()){ alert('Informe a descrição.'); return; }
-  var qtd=Number(g('mQtd').value)||1, vunit=Number(g('mVunit').value)||0;
-  var isEdit = ed.mat !== null;
-  var payload = {
-    obra:obraAtual.id, data:g('mData').value||null, fornecedor:g('mForn').value,
-    categ:g('mCateg').value, descricao:g('mDesc').value,
-    qtd:qtd, unid:'un', vunit:vunit, vtot:qtd*vunit,
-    nf:g('mPgto').value, obs:g('mSt').value
-  };
-  var res;
-  if(isEdit && db.materiais[ed.mat] && db.materiais[ed.mat].id){
-    res = await supa.from('materiais').update(payload).eq('id', db.materiais[ed.mat].id);
-  } else {
-    res = await supa.from('materiais').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelMat = delMat;
-delMat = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.materiais[i];
-  if(m && m.id) await supa.from('materiais').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Mão de obra
-var _origSalvarMO = salvarMO;
-salvarMO = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var nome = g('moNome').value.trim();
-  if(!nome){ alert('Informe o colaborador.'); return; }
-  var isEdit = ed.mo !== null;
-  var payload = {
-    obra:obraAtual.id, nome:nome, func:g('moFunc').value,
-    periodo:g('moServ').value, data:g('moData').value||null,
-    valor:Number(g('moValor').value)||0, forma:g('moSt').value
-  };
-  var res;
-  if(isEdit && db.maoObra[ed.mo] && db.maoObra[ed.mo].id){
-    res = await supa.from('mao_obra').update(payload).eq('id', db.maoObra[ed.mo].id);
-  } else {
-    res = await supa.from('mao_obra').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelMO = delMO;
-delMO = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.maoObra[i];
-  if(m && m.id) await supa.from('mao_obra').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Indiretos
-var _origSalvarInd = salvarInd;
-salvarInd = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var isEdit = ed.ind !== null;
-  var payload = {
-    obra:obraAtual.id, categ:g('indCat').value, data:g('indData').value||null,
-    descricao:g('indDesc').value, valor:Number(g('indValor').value)||0,
-    obs:g('indSt').value
-  };
-  var res;
-  if(isEdit && db.indiretos[ed.ind] && db.indiretos[ed.ind].id){
-    res = await supa.from('indiretos').update(payload).eq('id', db.indiretos[ed.ind].id);
-  } else {
-    res = await supa.from('indiretos').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelInd = delInd;
-delInd = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.indiretos[i];
-  if(m && m.id) await supa.from('indiretos').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Fluxo de caixa
-var _origSalvarFx = salvarFx;
-salvarFx = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var payload = {
-    obra:obraAtual.id, descricao:g('fxTipo').value,
-    data:g('fxData').value||null, valor:Number(g('fxValor').value)||0,
-    obs:g('fxObs').value
-  };
-  var res = await supa.from('fluxo').insert(payload);
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelFx = delFx;
-delFx = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.fluxo[i];
-  if(m && m.id) await supa.from('fluxo').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Clientes
-var _origSalvarCliente = salvarCliente;
-salvarCliente = async function() {
-  var nome = g('cliNome').value.trim();
-  if(!nome){ alert('Informe o nome do cliente.'); return; }
-  var isEdit = ed._cliIdx !== null;
-  var payload = {
-    tipo:g('cliTipo').value, nome:nome, doc:g('cliDoc').value,
-    razao:g('cliRazao').value, ie:g('cliIE').value,
-    tel:g('cliTel').value, email:g('cliEmail').value,
-    contato:g('cliContato').value, tel_contato:g('cliTelContato').value,
-    endereco:g('cliEnd').value, bairro:g('cliBairro').value,
-    cidade:g('cliCidade').value, cep:g('cliCep').value,
-    obs:g('cliObs').value, cadastro:new Date().toLocaleDateString('pt-BR')
-  };
-  var res;
-  if(isEdit && db.clientes[ed._cliIdx] && db.clientes[ed._cliIdx].id){
-    res = await supa.from('clientes').update(payload).eq('id', db.clientes[ed._cliIdx].id);
-  } else {
-    res = await supa.from('clientes').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  ed._cliIdx=null;
-  await load(); closeModal(); renderClientes(); popularSelectCliente();
-};
-
-var _origDelCliente = delCliente;
-delCliente = async function(i) {
-  if(!confirm('Excluir este cliente?')) return;
-  var c = db.clientes[i];
-  if(c && c.id) await supa.from('clientes').delete().eq('id', c.id);
-  await load(); renderClientes(); popularSelectCliente();
-};
-
-// Colaboradores
-var _origSalvarColaborador = salvarColaborador;
-salvarColaborador = async function() {
-  var nome = g('colNome').value.trim();
-  if(!nome){ alert('Informe o nome.'); return; }
-  var isEdit = ed._colIdx !== null;
-  var payload = {
-    nome:nome, apelido:g('colApelido').value, cpf:g('colCpf').value,
-    rg:g('colRg').value, nasc:g('colNasc').value||null,
-    tel:g('colTel').value, email:g('colEmail').value,
-    func:g('colFunc').value, tipo:g('colTipoV').value,
-    espec:g('colEspec').value,
-    diaria:parseFloat(g('colDiaria').value)||null,
-    hora:parseFloat(g('colHora').value)||null,
-    banco:g('colBanco').value, agencia:g('colAgencia').value, conta:g('colConta').value,
-    pix:g('colPix').value, pix_tipo:g('colPixTipo').value,
-    obs:g('colObs').value, cadastro:new Date().toLocaleDateString('pt-BR')
-  };
-  var res;
-  if(isEdit && db.colaboradores[ed._colIdx] && db.colaboradores[ed._colIdx].id){
-    res = await supa.from('colaboradores').update(payload).eq('id', db.colaboradores[ed._colIdx].id);
-  } else {
-    res = await supa.from('colaboradores').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  ed._colIdx=null;
-  await load(); closeModal(); renderColaboradores(); popularSelectColab();
-};
-
-var _origDelColab = delColab;
-delColab = async function(i) {
-  if(!confirm('Remover colaborador?')) return;
-  var c = db.colaboradores[i];
-  if(c && c.id) await supa.from('colaboradores').delete().eq('id', c.id);
-  await load(); renderColaboradores(); popularSelectColab();
-};
-
-// Duplicatas
-var _origSalvarDuplicata = salvarDuplicata;
-salvarDuplicata = async function() {
-  var desc = g('dupDesc').value.trim();
-  if(!desc){ alert('Informe a descrição.'); return; }
-  var valor = parseFloat(g('dupValor').value)||0;
-  if(!valor){ alert('Informe o valor.'); return; }
-  var venc1 = g('dupVenc').value;
-  if(!venc1){ alert('Informe o 1º vencimento.'); return; }
-  var isEdit = _dupEditIdx !== null;
-  var obraId = g('dupObra').value || null;
-  var payload = {
-    tipo:g('dupTipo').value, descricao:desc,
-    fornecedor:g('dupParte').value,
-    obra:obraId,
-    valor:valor, vencimento:venc1,
-    status:'aberta', pago:0,
-    forma:g('dupForma').value, obs:g('dupNotas').value
-  };
-  var res;
-  if(isEdit && db.duplicatas[_dupEditIdx] && db.duplicatas[_dupEditIdx].id){
-    res = await supa.from('duplicatas').update(payload).eq('id', db.duplicatas[_dupEditIdx].id);
-  } else {
-    res = await supa.from('duplicatas').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  _dupEditIdx=null;
-  await load(); closeModal(); renderDuplicatas(); renderAlertasDup();
-};
-
-var _origDelDuplicata = delDuplicata;
-delDuplicata = async function(i) {
-  if(!confirm('Excluir esta duplicata?')) return;
-  var d = db.duplicatas[i];
-  if(d && d.id) await supa.from('duplicatas').delete().eq('id', d.id);
-  await load(); renderDuplicatas();
-};
-
-// Aprovar orçamento
-var _origAprovarOrcamento = aprovarOrcamento;
-aprovarOrcamento = async function(idx) {
-  idx = Number(idx);
-  var o = db.orcamentos[idx];
-  if(!o) return;
-  var novoStatus = o.status === 'aguardando_aprovacao' ? 'aprovado' : o.status;
-  await supa.from('orcamentos').update({status:novoStatus}).eq('id', o.id);
-  await load(); renderOrcamentos();
-  if(novoStatus === 'aprovado'){
-    ed._orcData = db.orcamentos.find(function(x){return x.id===o.id;});
-    ed._orcIdx = db.orcamentos.findIndex(function(x){return x.id===o.id;});
-    var ov = db.orcamentos[db.orcamentos.findIndex(function(x){return x.id===o.id;})];
-    g('oNome').value=ov.nome; g('oCliente').value=ov.cliente||'';
-    g('oEnd').value=(ov.endereco||'')+(ov.cidade?' — '+ov.cidade:'');
-    g('oResp2').value=ov.resp||'';
-    g('oInicio').value=ov.inicio||''; g('oFim').value=ov.prazo||'';
-    g('oValor').value=ov.preco?ov.preco.toFixed(2):'';
-    abrirModal('modalObra');
-  }
-};
-
-// Finalizar obra
-var _origFinalizarObra = finalizarObra;
-finalizarObra = async function() {
-  if(!obraAtual) return;
-  if(!confirm('Finalizar esta obra?')) return;
-  await supa.from('obras').update({status:'Finalizada'}).eq('id', obraAtual.id);
-  await load();
-  obraAtual = db.obras.find(function(o){ return o.id === obraAtual.id; }) || null;
-  render();
-  alert('✅ Obra finalizada!');
-};
-
-// Indicador de loading
-(function addLoading(){
-  var style = document.createElement('style');
-  style.textContent = '#sbLoading{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#0ea87e,#7c3aed);z-index:9999;animation:sbbar 1.5s linear infinite;display:none} @keyframes sbbar{0%{width:0%;opacity:1}70%{width:90%;opacity:1}100%{width:100%;opacity:0}}';
-  document.head.appendChild(style);
-  var bar = document.createElement('div'); bar.id='sbLoading';
-  document.body.prepend(bar);
-  var origLoad = load;
-  window.load = async function(){
-    document.getElementById('sbLoading').style.display='block';
-    await origLoad();
-    document.getElementById('sbLoading').style.display='none';
-  };
+    p.db.orcamentos.push(orc);
+    p.oid=null;
+    localStorage.setItem('gestaoObrasV7',JSON.stringify(p));
+  }catch(e){console.error('Seed oficina:',e);}
 })();
 
 load().then(function(){ render(); });
-</script>
-</body>
-</html>
 +sub.toFixed(2));}
       else totalInfra+=sub;
     }
@@ -3894,363 +3591,123 @@ function salvarFx(){
 }
 function delFx(i){if(!confirm('Excluir?'))return;db.fluxo.splice(i,1);save();render();}
 
-// Seed removido — dados no Supabase
+// Limpa dados antigos da AutoCar do localStorage e reinicia limpo
+(function limparAutocar(){
+  try{
+    var s=localStorage.getItem('gestaoObrasV7');
+    if(s){
+      var p=JSON.parse(s);
+      if(p.db){
+        p.db.orcamentos=(p.db.orcamentos||[]).filter(function(o){return o.id!==1748000001;});
+        p.db.obras=(p.db.obras||[]).filter(function(o){return o.id!==1748000002;});
+        p.db.materiais=(p.db.materiais||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.maoObra=(p.db.maoObra||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.indiretos=(p.db.indiretos||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.fluxo=(p.db.fluxo||[]).filter(function(m){return m.obra!==1748000002;});
+        if(p.oid==1748000002)p.oid=null;
+        localStorage.setItem('gestaoObrasV7',JSON.stringify(p));
+      }
+    }
+  }catch(e){}
+})();
 
-// Seed removido — dados no Supabase
+// ── SEED: OFICINA MECÂNICA — PRANCHA A101 ────────────────────
+(function seedOficina(){
+  try{
+    var s=localStorage.getItem('gestaoObrasV7');
+    var p=s?JSON.parse(s):{db:{orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],clientes:[],colaboradores:[]}};
+    if(!p.db)p.db={orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],clientes:[],colaboradores:[]};
+    if(p.db.orcamentos.find(function(o){return o.id===1748100001;}))return;
 
+    // Serviços detalhados conforme proposta
+    var servicos=[
+      {nome:'Parede Drywall ST/70/ST — Adm + Halls',und:'m²',m2:101.61,pu:140.00,total:14225.40,obs:'Área de Espera (34,44m²), Adm (33,93m²), HO1+HO2 (33,24m²)'},
+      {nome:'Parede Drywall ST/70/RU — Banheiros',und:'m²',m2:37.02,pu:185.00,total:6848.70,obs:'BHO1 (18,51m²) e BHO2 (18,51m²) — placa resistente à umidade'},
+      {nome:'Forro Estruturado — Espera + Adm + Halls',und:'m²',m2:29.00,pu:99.00,total:2871.00,obs:'Espera 12m², Adm 11m², Halls 6m²'},
+      {nome:'Forro Aramado — Banheiros',und:'m²',m2:6.00,pu:75.00,total:450.00,obs:'BHO1 3m² + BHO2 3m² — verba mínima aplicável (<15m²)'},
+      {nome:'Sanca Drywall — Espera + Administrativo',und:'m lin.',m2:13.60,pu:40.00,total:544.00,obs:'Espera 7,00m + Adm 6,60m'},
+      {nome:'Rodapé Liso 10cm',und:'m lin.',m2:54.40,pu:75.00,total:4080.00,obs:'Espera 14m, Adm 13,2m, Halls 13,6m, BHOs 13,6m'}
+    ];
 
-// ═══════════════════════════════════════════════════════
-// SUPABASE CRUD — Salvar/Editar/Deletar no banco de dados
-// ═══════════════════════════════════════════════════════
+    var totalServicos=29019.10;
+    var ind=2000,lucroP=30,reservaP=5;
+    var custo=totalServicos+ind;
+    var reserva=custo*reservaP/100;
+    var lucro=custo*lucroP/100;
+    var preco=custo+reserva+lucro;
+    var margem=preco>0?(lucro/preco)*100:0;
 
-// Orçamentos
-var _origSalvarGVT = salvarGVT;
-salvarGVT = async function(gerarProposta) {
-  var nome = g('gNome').value.trim();
-  if(!nome){ alert('Informe o nome da obra.'); return; }
-  var calc = calcGVT();
-  var isEdit = ed.gvt !== null;
-  var existId = isEdit ? db.orcamentos[ed.gvt].id : null;
+    var orc={
+      id:1748100001,
+      nome:'Oficina Mecânica — Prancha A101',
+      cliente:'Jhonatan Micaias',
+      doc:'',
+      endereco:'',
+      cidade:'Belém - PA',
+      tipo:'Reforma comercial',
+      area:'202,00',
+      ocupado:'Não',
+      prazo:'2026-09-30',
+      contato:'Jhonatan Micaias',
+      tel:'',
+      resp:'Raiza Barbosa',
+      obsGeral:'Prancha A101 — Planta Baixa / Layout. Escala 1:50. Data projeto: 19/05/2026. 8 ambientes.',
+      inicio:'2026-06-01',
+      acesso:'Rampa',
+      horario:'Comercial',
+      apoio:'Andaime',
+      voltagem:'220V',
+      grau:'G2 — Médio',
+      eletrica:'Pendente',
+      hidraulica:'Pendente',
+      refrigeracao:'Pendente',
+      gas:'N/A',
+      projeto:'Sim',
+      art:'Pendente',
+      fotos:'',
+      lt:{
+        forro:{tipo:'Estruturado + Aramado',m2:35,pu:94.6,pd:3,la:'Não',obs:'Estruturado: Espera 12m², Adm 11m², Halls 6m². Aramado: BHO1 3m² + BHO2 3m²'},
+        drywall:{sist:'ST/70/ST e ST/70/RU',m2:138.63,pu:155,pd:3,la:'Não',obs:'ST/70/ST ambientes secos · ST/70/RU banheiros. Perfil 70mm.'},
+        naval:{tipo:'Painel Cego',m2:0,pu:0,h:0,cor:'',obs:''},
+        piso:{tipo:'Porcelanato retif. 60x60 (Adm+Halls) / Epóxi industrial (Oficina+Dep.)',m2:195.70,pu:0,rodape:'Liso 10cm',rodM:54.40,rodPU:75,obs:'FORA DO ESCOPO DRYWALL — orçar separadamente'},
+        pintura:{tipo:'Epóxi industrial + Látex PVA',parede:153.39,pu:0,teto:0,tpu:0,cor:'A definir'},
+        demolicao:{parede:0,piso:0,forro:'Não',entulho:'Sim',obs:''}
+      },
+      servicos:servicos,
+      ind:ind,
+      lucroP:lucroP,
+      reservaP:reservaP,
+      custo:custo,
+      reserva:reserva,
+      lucro:lucro,
+      preco:preco,
+      margem:margem,
+      obs:'Ambientes <15m² (BHO1, BHO2, HO1, HO2): verba mínima conforme prática comercial. SIGE BT: +6% sobre total. Cronograma estimado: 14 a 18 semanas. Valor à vista: R$29.019,10 · Cartão: R$32.007,28. Serviços fora do escopo drywall a orçar separadamente: pintura epóxi industrial (292,32m²), pintura látex PVA (153,39m²), piso porcelanato 60x60 (28,70m²), piso epóxi/concreto polido (167m²), revestimento cerâmico banheiros (37,02m²), instalações elétricas (62pts), hidrossanitárias, impermeabilização banheiros (6m²), caixa separadora água/óleo.',
+      status:'aguardando_aprovacao',
+      criado:'28/05/2026',
+      valorCartao:32007.28
+    };
 
-  var payload = {
-    nome:nome, cliente:g('gCliente').value, doc:g('gDoc').value,
-    endereco:g('gEnd').value, cidade:g('gCidade').value,
-    tipo:g('gTipo').value, area:parseFloat(g('gArea').value)||null,
-    ocup:g('gOcup').value, prazo:g('gPrazo').value||null,
-    contato:g('gContato').value, tel:g('gTel').value,
-    resp:g('gResp').value, obs_geral:g('gObsGeral').value,
-    inicio:g('gInicio').value||null, acesso:g('gAcesso').value,
-    horario:g('gHorario').value, apoio:g('gApoio').value,
-    volt:g('gVolt').value, grau:g('gGrau').value,
-    elet:g('gElet').value, hidr:g('gHidr').value,
-    refrig:g('gRefrig').value, gas:g('gGas').value,
-    projeto:g('gProjeto').value, art:g('gArt').value,
-    fotos:g('gFotos').value,
-    servicos:calc.servicos,
-    custo:calc.custo, preco:calc.preco, lucro:calc.lucro, margem:calc.margem,
-    status:'aguardando_aprovacao',
-    criado:new Date().toLocaleDateString('pt-BR')
-  };
+    // Cliente
+    if(!p.db.clientes)p.db.clientes=[];
+    if(!p.db.clientes.find(function(c){return c.nome==='Jhonatan Micaias';})){
+      p.db.clientes.push({
+        id:1748100010,nome:'Jhonatan Micaias',tipo:'Pessoa física',
+        doc:'',razao:'',ie:'',tel:'',email:'',
+        contato:'Jhonatan Micaias',telContato:'',
+        end:'',bairro:'',cidade:'Belém - PA',cep:'',
+        obs:'Cliente — Oficina Mecânica Comercial (Prancha A101)',
+        cadastro:'28/05/2026'
+      });
+    }
 
-  var res;
-  if(isEdit && existId){
-    res = await supa.from('orcamentos').update(payload).eq('id', existId).select().single();
-  } else {
-    res = await supa.from('orcamentos').insert(payload).select().single();
-  }
-  if(res.error){ alert('Erro ao salvar: ' + res.error.message); return; }
-
-  await load(); closeModal();
-  if(gerarProposta){
-    var idx = db.orcamentos.findIndex(function(x){ return x.id === res.data.id; });
-    renderOrcamentos();
-    if(idx>=0) gerarPropostaHTML(idx);
-  } else {
-    renderOrcamentos();
-    showPage('orcamentos');
-  }
-};
-
-// Obras
-var _origSalvarObra = salvarObra;
-salvarObra = async function() {
-  var nome = g('oNome').value.trim(); if(!nome){ alert('Informe o nome.'); return; }
-  var orc = ed._orcData || null;
-  var payload = {
-    nome:nome, cliente:g('oCliente').value, endereco:g('oEnd').value,
-    tipo: orc ? orc.tipo : 'Reforma',
-    valor:Number(g('oValor').value)||0,
-    prev_mat:orc&&orc.servicos?orc.servicos.reduce(function(a,s){return a+s.total*0.4;},0):0,
-    prev_mo:orc&&orc.servicos?orc.servicos.reduce(function(a,s){return a+s.total*0.55;},0):0,
-    prev_ind:orc?orc.ind:0,
-    inicio:g('oInicio').value||null, prazo:g('oFim').value||null,
-    status:'Em andamento',
-    orcamento_id: orc ? orc.id : null
-  };
-  var res = await supa.from('obras').insert(payload).select().single();
-  if(res.error){ alert('Erro ao criar obra: ' + res.error.message); return; }
-  if(orc){ await supa.from('orcamentos').update({status:'convertido'}).eq('id', orc.id); }
-  await load();
-  obraAtual = db.obras.find(function(o){ return o.id === res.data.id; }) || db.obras[0];
-  if(obraAtual && g('obraSelect')) g('obraSelect').value = obraAtual.id;
-  ed._orcData=null; ed._orcIdx=null;
-  closeModal(); render(); showPage('dash');
-  alert('✅ Obra "'+nome+'" criada com sucesso!');
-};
-
-// Materiais
-var _origSalvarMat = salvarMat;
-salvarMat = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  if(!g('mDesc').value.trim()){ alert('Informe a descrição.'); return; }
-  var qtd=Number(g('mQtd').value)||1, vunit=Number(g('mVunit').value)||0;
-  var isEdit = ed.mat !== null;
-  var payload = {
-    obra:obraAtual.id, data:g('mData').value||null, fornecedor:g('mForn').value,
-    categ:g('mCateg').value, descricao:g('mDesc').value,
-    qtd:qtd, unid:'un', vunit:vunit, vtot:qtd*vunit,
-    nf:g('mPgto').value, obs:g('mSt').value
-  };
-  var res;
-  if(isEdit && db.materiais[ed.mat] && db.materiais[ed.mat].id){
-    res = await supa.from('materiais').update(payload).eq('id', db.materiais[ed.mat].id);
-  } else {
-    res = await supa.from('materiais').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelMat = delMat;
-delMat = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.materiais[i];
-  if(m && m.id) await supa.from('materiais').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Mão de obra
-var _origSalvarMO = salvarMO;
-salvarMO = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var nome = g('moNome').value.trim();
-  if(!nome){ alert('Informe o colaborador.'); return; }
-  var isEdit = ed.mo !== null;
-  var payload = {
-    obra:obraAtual.id, nome:nome, func:g('moFunc').value,
-    periodo:g('moServ').value, data:g('moData').value||null,
-    valor:Number(g('moValor').value)||0, forma:g('moSt').value
-  };
-  var res;
-  if(isEdit && db.maoObra[ed.mo] && db.maoObra[ed.mo].id){
-    res = await supa.from('mao_obra').update(payload).eq('id', db.maoObra[ed.mo].id);
-  } else {
-    res = await supa.from('mao_obra').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelMO = delMO;
-delMO = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.maoObra[i];
-  if(m && m.id) await supa.from('mao_obra').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Indiretos
-var _origSalvarInd = salvarInd;
-salvarInd = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var isEdit = ed.ind !== null;
-  var payload = {
-    obra:obraAtual.id, categ:g('indCat').value, data:g('indData').value||null,
-    descricao:g('indDesc').value, valor:Number(g('indValor').value)||0,
-    obs:g('indSt').value
-  };
-  var res;
-  if(isEdit && db.indiretos[ed.ind] && db.indiretos[ed.ind].id){
-    res = await supa.from('indiretos').update(payload).eq('id', db.indiretos[ed.ind].id);
-  } else {
-    res = await supa.from('indiretos').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelInd = delInd;
-delInd = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.indiretos[i];
-  if(m && m.id) await supa.from('indiretos').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Fluxo de caixa
-var _origSalvarFx = salvarFx;
-salvarFx = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var payload = {
-    obra:obraAtual.id, descricao:g('fxTipo').value,
-    data:g('fxData').value||null, valor:Number(g('fxValor').value)||0,
-    obs:g('fxObs').value
-  };
-  var res = await supa.from('fluxo').insert(payload);
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelFx = delFx;
-delFx = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.fluxo[i];
-  if(m && m.id) await supa.from('fluxo').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Clientes
-var _origSalvarCliente = salvarCliente;
-salvarCliente = async function() {
-  var nome = g('cliNome').value.trim();
-  if(!nome){ alert('Informe o nome do cliente.'); return; }
-  var isEdit = ed._cliIdx !== null;
-  var payload = {
-    tipo:g('cliTipo').value, nome:nome, doc:g('cliDoc').value,
-    razao:g('cliRazao').value, ie:g('cliIE').value,
-    tel:g('cliTel').value, email:g('cliEmail').value,
-    contato:g('cliContato').value, tel_contato:g('cliTelContato').value,
-    endereco:g('cliEnd').value, bairro:g('cliBairro').value,
-    cidade:g('cliCidade').value, cep:g('cliCep').value,
-    obs:g('cliObs').value, cadastro:new Date().toLocaleDateString('pt-BR')
-  };
-  var res;
-  if(isEdit && db.clientes[ed._cliIdx] && db.clientes[ed._cliIdx].id){
-    res = await supa.from('clientes').update(payload).eq('id', db.clientes[ed._cliIdx].id);
-  } else {
-    res = await supa.from('clientes').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  ed._cliIdx=null;
-  await load(); closeModal(); renderClientes(); popularSelectCliente();
-};
-
-var _origDelCliente = delCliente;
-delCliente = async function(i) {
-  if(!confirm('Excluir este cliente?')) return;
-  var c = db.clientes[i];
-  if(c && c.id) await supa.from('clientes').delete().eq('id', c.id);
-  await load(); renderClientes(); popularSelectCliente();
-};
-
-// Colaboradores
-var _origSalvarColaborador = salvarColaborador;
-salvarColaborador = async function() {
-  var nome = g('colNome').value.trim();
-  if(!nome){ alert('Informe o nome.'); return; }
-  var isEdit = ed._colIdx !== null;
-  var payload = {
-    nome:nome, apelido:g('colApelido').value, cpf:g('colCpf').value,
-    rg:g('colRg').value, nasc:g('colNasc').value||null,
-    tel:g('colTel').value, email:g('colEmail').value,
-    func:g('colFunc').value, tipo:g('colTipoV').value,
-    espec:g('colEspec').value,
-    diaria:parseFloat(g('colDiaria').value)||null,
-    hora:parseFloat(g('colHora').value)||null,
-    banco:g('colBanco').value, agencia:g('colAgencia').value, conta:g('colConta').value,
-    pix:g('colPix').value, pix_tipo:g('colPixTipo').value,
-    obs:g('colObs').value, cadastro:new Date().toLocaleDateString('pt-BR')
-  };
-  var res;
-  if(isEdit && db.colaboradores[ed._colIdx] && db.colaboradores[ed._colIdx].id){
-    res = await supa.from('colaboradores').update(payload).eq('id', db.colaboradores[ed._colIdx].id);
-  } else {
-    res = await supa.from('colaboradores').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  ed._colIdx=null;
-  await load(); closeModal(); renderColaboradores(); popularSelectColab();
-};
-
-var _origDelColab = delColab;
-delColab = async function(i) {
-  if(!confirm('Remover colaborador?')) return;
-  var c = db.colaboradores[i];
-  if(c && c.id) await supa.from('colaboradores').delete().eq('id', c.id);
-  await load(); renderColaboradores(); popularSelectColab();
-};
-
-// Duplicatas
-var _origSalvarDuplicata = salvarDuplicata;
-salvarDuplicata = async function() {
-  var desc = g('dupDesc').value.trim();
-  if(!desc){ alert('Informe a descrição.'); return; }
-  var valor = parseFloat(g('dupValor').value)||0;
-  if(!valor){ alert('Informe o valor.'); return; }
-  var venc1 = g('dupVenc').value;
-  if(!venc1){ alert('Informe o 1º vencimento.'); return; }
-  var isEdit = _dupEditIdx !== null;
-  var obraId = g('dupObra').value || null;
-  var payload = {
-    tipo:g('dupTipo').value, descricao:desc,
-    fornecedor:g('dupParte').value,
-    obra:obraId,
-    valor:valor, vencimento:venc1,
-    status:'aberta', pago:0,
-    forma:g('dupForma').value, obs:g('dupNotas').value
-  };
-  var res;
-  if(isEdit && db.duplicatas[_dupEditIdx] && db.duplicatas[_dupEditIdx].id){
-    res = await supa.from('duplicatas').update(payload).eq('id', db.duplicatas[_dupEditIdx].id);
-  } else {
-    res = await supa.from('duplicatas').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  _dupEditIdx=null;
-  await load(); closeModal(); renderDuplicatas(); renderAlertasDup();
-};
-
-var _origDelDuplicata = delDuplicata;
-delDuplicata = async function(i) {
-  if(!confirm('Excluir esta duplicata?')) return;
-  var d = db.duplicatas[i];
-  if(d && d.id) await supa.from('duplicatas').delete().eq('id', d.id);
-  await load(); renderDuplicatas();
-};
-
-// Aprovar orçamento
-var _origAprovarOrcamento = aprovarOrcamento;
-aprovarOrcamento = async function(idx) {
-  idx = Number(idx);
-  var o = db.orcamentos[idx];
-  if(!o) return;
-  var novoStatus = o.status === 'aguardando_aprovacao' ? 'aprovado' : o.status;
-  await supa.from('orcamentos').update({status:novoStatus}).eq('id', o.id);
-  await load(); renderOrcamentos();
-  if(novoStatus === 'aprovado'){
-    ed._orcData = db.orcamentos.find(function(x){return x.id===o.id;});
-    ed._orcIdx = db.orcamentos.findIndex(function(x){return x.id===o.id;});
-    var ov = db.orcamentos[db.orcamentos.findIndex(function(x){return x.id===o.id;})];
-    g('oNome').value=ov.nome; g('oCliente').value=ov.cliente||'';
-    g('oEnd').value=(ov.endereco||'')+(ov.cidade?' — '+ov.cidade:'');
-    g('oResp2').value=ov.resp||'';
-    g('oInicio').value=ov.inicio||''; g('oFim').value=ov.prazo||'';
-    g('oValor').value=ov.preco?ov.preco.toFixed(2):'';
-    abrirModal('modalObra');
-  }
-};
-
-// Finalizar obra
-var _origFinalizarObra = finalizarObra;
-finalizarObra = async function() {
-  if(!obraAtual) return;
-  if(!confirm('Finalizar esta obra?')) return;
-  await supa.from('obras').update({status:'Finalizada'}).eq('id', obraAtual.id);
-  await load();
-  obraAtual = db.obras.find(function(o){ return o.id === obraAtual.id; }) || null;
-  render();
-  alert('✅ Obra finalizada!');
-};
-
-// Indicador de loading
-(function addLoading(){
-  var style = document.createElement('style');
-  style.textContent = '#sbLoading{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#0ea87e,#7c3aed);z-index:9999;animation:sbbar 1.5s linear infinite;display:none} @keyframes sbbar{0%{width:0%;opacity:1}70%{width:90%;opacity:1}100%{width:100%;opacity:0}}';
-  document.head.appendChild(style);
-  var bar = document.createElement('div'); bar.id='sbLoading';
-  document.body.prepend(bar);
-  var origLoad = load;
-  window.load = async function(){
-    document.getElementById('sbLoading').style.display='block';
-    await origLoad();
-    document.getElementById('sbLoading').style.display='none';
-  };
+    p.db.orcamentos.push(orc);
+    p.oid=null;
+    localStorage.setItem('gestaoObrasV7',JSON.stringify(p));
+  }catch(e){console.error('Seed oficina:',e);}
 })();
 
 load().then(function(){ render(); });
-</script>
-</body>
-</html>
 +totalPts.toFixed(2):'';
   // Atualiza total box
   var totEl=document.getElementById('ltETotal');
@@ -5474,354 +4931,296 @@ function salvarFx(){
 }
 function delFx(i){if(!confirm('Excluir?'))return;db.fluxo.splice(i,1);save();render();}
 
-// Seed removido — dados no Supabase
+// Limpa dados antigos da AutoCar do localStorage e reinicia limpo
+(function limparAutocar(){
+  try{
+    var s=localStorage.getItem('gestaoObrasV7');
+    if(s){
+      var p=JSON.parse(s);
+      if(p.db){
+        p.db.orcamentos=(p.db.orcamentos||[]).filter(function(o){return o.id!==1748000001;});
+        p.db.obras=(p.db.obras||[]).filter(function(o){return o.id!==1748000002;});
+        p.db.materiais=(p.db.materiais||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.maoObra=(p.db.maoObra||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.indiretos=(p.db.indiretos||[]).filter(function(m){return m.obra!==1748000002;});
+        p.db.fluxo=(p.db.fluxo||[]).filter(function(m){return m.obra!==1748000002;});
+        if(p.oid==1748000002)p.oid=null;
+        localStorage.setItem('gestaoObrasV7',JSON.stringify(p));
+      }
+    }
+  }catch(e){}
+})();
 
-// Seed removido — dados no Supabase
+// ── SEED: OFICINA MECÂNICA — PRANCHA A101 ────────────────────
+(function seedOficina(){
+  try{
+    var s=localStorage.getItem('gestaoObrasV7');
+    var p=s?JSON.parse(s):{db:{orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],clientes:[],colaboradores:[]}};
+    if(!p.db)p.db={orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],clientes:[],colaboradores:[]};
+    if(p.db.orcamentos.find(function(o){return o.id===1748100001;}))return;
 
+    // Serviços detalhados conforme proposta
+    var servicos=[
+      {nome:'Parede Drywall ST/70/ST — Adm + Halls',und:'m²',m2:101.61,pu:140.00,total:14225.40,obs:'Área de Espera (34,44m²), Adm (33,93m²), HO1+HO2 (33,24m²)'},
+      {nome:'Parede Drywall ST/70/RU — Banheiros',und:'m²',m2:37.02,pu:185.00,total:6848.70,obs:'BHO1 (18,51m²) e BHO2 (18,51m²) — placa resistente à umidade'},
+      {nome:'Forro Estruturado — Espera + Adm + Halls',und:'m²',m2:29.00,pu:99.00,total:2871.00,obs:'Espera 12m², Adm 11m², Halls 6m²'},
+      {nome:'Forro Aramado — Banheiros',und:'m²',m2:6.00,pu:75.00,total:450.00,obs:'BHO1 3m² + BHO2 3m² — verba mínima aplicável (<15m²)'},
+      {nome:'Sanca Drywall — Espera + Administrativo',und:'m lin.',m2:13.60,pu:40.00,total:544.00,obs:'Espera 7,00m + Adm 6,60m'},
+      {nome:'Rodapé Liso 10cm',und:'m lin.',m2:54.40,pu:75.00,total:4080.00,obs:'Espera 14m, Adm 13,2m, Halls 13,6m, BHOs 13,6m'}
+    ];
 
-// ═══════════════════════════════════════════════════════
-// SUPABASE CRUD — Salvar/Editar/Deletar no banco de dados
-// ═══════════════════════════════════════════════════════
+    var totalServicos=29019.10;
+    var ind=2000,lucroP=30,reservaP=5;
+    var custo=totalServicos+ind;
+    var reserva=custo*reservaP/100;
+    var lucro=custo*lucroP/100;
+    var preco=custo+reserva+lucro;
+    var margem=preco>0?(lucro/preco)*100:0;
 
-// Orçamentos
-var _origSalvarGVT = salvarGVT;
-salvarGVT = async function(gerarProposta) {
-  var nome = g('gNome').value.trim();
-  if(!nome){ alert('Informe o nome da obra.'); return; }
-  var calc = calcGVT();
-  var isEdit = ed.gvt !== null;
-  var existId = isEdit ? db.orcamentos[ed.gvt].id : null;
+    var orc={
+      id:1748100001,
+      nome:'Oficina Mecânica — Prancha A101',
+      cliente:'Jhonatan Micaias',
+      doc:'',
+      endereco:'',
+      cidade:'Belém - PA',
+      tipo:'Reforma comercial',
+      area:'202,00',
+      ocupado:'Não',
+      prazo:'2026-09-30',
+      contato:'Jhonatan Micaias',
+      tel:'',
+      resp:'Raiza Barbosa',
+      obsGeral:'Prancha A101 — Planta Baixa / Layout. Escala 1:50. Data projeto: 19/05/2026. 8 ambientes.',
+      inicio:'2026-06-01',
+      acesso:'Rampa',
+      horario:'Comercial',
+      apoio:'Andaime',
+      voltagem:'220V',
+      grau:'G2 — Médio',
+      eletrica:'Pendente',
+      hidraulica:'Pendente',
+      refrigeracao:'Pendente',
+      gas:'N/A',
+      projeto:'Sim',
+      art:'Pendente',
+      fotos:'',
+      lt:{
+        forro:{tipo:'Estruturado + Aramado',m2:35,pu:94.6,pd:3,la:'Não',obs:'Estruturado: Espera 12m², Adm 11m², Halls 6m². Aramado: BHO1 3m² + BHO2 3m²'},
+        drywall:{sist:'ST/70/ST e ST/70/RU',m2:138.63,pu:155,pd:3,la:'Não',obs:'ST/70/ST ambientes secos · ST/70/RU banheiros. Perfil 70mm.'},
+        naval:{tipo:'Painel Cego',m2:0,pu:0,h:0,cor:'',obs:''},
+        piso:{tipo:'Porcelanato retif. 60x60 (Adm+Halls) / Epóxi industrial (Oficina+Dep.)',m2:195.70,pu:0,rodape:'Liso 10cm',rodM:54.40,rodPU:75,obs:'FORA DO ESCOPO DRYWALL — orçar separadamente'},
+        pintura:{tipo:'Epóxi industrial + Látex PVA',parede:153.39,pu:0,teto:0,tpu:0,cor:'A definir'},
+        demolicao:{parede:0,piso:0,forro:'Não',entulho:'Sim',obs:''}
+      },
+      servicos:servicos,
+      ind:ind,
+      lucroP:lucroP,
+      reservaP:reservaP,
+      custo:custo,
+      reserva:reserva,
+      lucro:lucro,
+      preco:preco,
+      margem:margem,
+      obs:'Ambientes <15m² (BHO1, BHO2, HO1, HO2): verba mínima conforme prática comercial. SIGE BT: +6% sobre total. Cronograma estimado: 14 a 18 semanas. Valor à vista: R$29.019,10 · Cartão: R$32.007,28. Serviços fora do escopo drywall a orçar separadamente: pintura epóxi industrial (292,32m²), pintura látex PVA (153,39m²), piso porcelanato 60x60 (28,70m²), piso epóxi/concreto polido (167m²), revestimento cerâmico banheiros (37,02m²), instalações elétricas (62pts), hidrossanitárias, impermeabilização banheiros (6m²), caixa separadora água/óleo.',
+      status:'aguardando_aprovacao',
+      criado:'28/05/2026',
+      valorCartao:32007.28
+    };
 
-  var payload = {
-    nome:nome, cliente:g('gCliente').value, doc:g('gDoc').value,
-    endereco:g('gEnd').value, cidade:g('gCidade').value,
-    tipo:g('gTipo').value, area:parseFloat(g('gArea').value)||null,
-    ocup:g('gOcup').value, prazo:g('gPrazo').value||null,
-    contato:g('gContato').value, tel:g('gTel').value,
-    resp:g('gResp').value, obs_geral:g('gObsGeral').value,
-    inicio:g('gInicio').value||null, acesso:g('gAcesso').value,
-    horario:g('gHorario').value, apoio:g('gApoio').value,
-    volt:g('gVolt').value, grau:g('gGrau').value,
-    elet:g('gElet').value, hidr:g('gHidr').value,
-    refrig:g('gRefrig').value, gas:g('gGas').value,
-    projeto:g('gProjeto').value, art:g('gArt').value,
-    fotos:g('gFotos').value,
-    servicos:calc.servicos,
-    custo:calc.custo, preco:calc.preco, lucro:calc.lucro, margem:calc.margem,
-    status:'aguardando_aprovacao',
-    criado:new Date().toLocaleDateString('pt-BR')
-  };
+    // Cliente
+    if(!p.db.clientes)p.db.clientes=[];
+    if(!p.db.clientes.find(function(c){return c.nome==='Jhonatan Micaias';})){
+      p.db.clientes.push({
+        id:1748100010,nome:'Jhonatan Micaias',tipo:'Pessoa física',
+        doc:'',razao:'',ie:'',tel:'',email:'',
+        contato:'Jhonatan Micaias',telContato:'',
+        end:'',bairro:'',cidade:'Belém - PA',cep:'',
+        obs:'Cliente — Oficina Mecânica Comercial (Prancha A101)',
+        cadastro:'28/05/2026'
+      });
+    }
 
-  var res;
-  if(isEdit && existId){
-    res = await supa.from('orcamentos').update(payload).eq('id', existId).select().single();
-  } else {
-    res = await supa.from('orcamentos').insert(payload).select().single();
-  }
-  if(res.error){ alert('Erro ao salvar: ' + res.error.message); return; }
+    p.db.orcamentos.push(orc);
+    p.oid=null;
+    localStorage.setItem('gestaoObrasV7',JSON.stringify(p));
+  }catch(e){console.error('Seed oficina:',e);}
+})();
 
-  await load(); closeModal();
-  if(gerarProposta){
-    var idx = db.orcamentos.findIndex(function(x){ return x.id === res.data.id; });
-    renderOrcamentos();
-    if(idx>=0) gerarPropostaHTML(idx);
-  } else {
-    renderOrcamentos();
-    showPage('orcamentos');
-  }
-};
+load().then(function(){ render(); });
 
-// Obras
-var _origSalvarObra = salvarObra;
-salvarObra = async function() {
-  var nome = g('oNome').value.trim(); if(!nome){ alert('Informe o nome.'); return; }
-  var orc = ed._orcData || null;
-  var payload = {
-    nome:nome, cliente:g('oCliente').value, endereco:g('oEnd').value,
-    tipo: orc ? orc.tipo : 'Reforma',
-    valor:Number(g('oValor').value)||0,
-    prev_mat:orc&&orc.servicos?orc.servicos.reduce(function(a,s){return a+s.total*0.4;},0):0,
-    prev_mo:orc&&orc.servicos?orc.servicos.reduce(function(a,s){return a+s.total*0.55;},0):0,
-    prev_ind:orc?orc.ind:0,
-    inicio:g('oInicio').value||null, prazo:g('oFim').value||null,
-    status:'Em andamento',
-    orcamento_id: orc ? orc.id : null
-  };
-  var res = await supa.from('obras').insert(payload).select().single();
-  if(res.error){ alert('Erro ao criar obra: ' + res.error.message); return; }
-  if(orc){ await supa.from('orcamentos').update({status:'convertido'}).eq('id', orc.id); }
-  await load();
-  obraAtual = db.obras.find(function(o){ return o.id === res.data.id; }) || db.obras[0];
-  if(obraAtual && g('obraSelect')) g('obraSelect').value = obraAtual.id;
-  ed._orcData=null; ed._orcIdx=null;
-  closeModal(); render(); showPage('dash');
-  alert('✅ Obra "'+nome+'" criada com sucesso!');
-};
+// ══════════════════════════════════════════
+// CAMADA SUPABASE — sobrescreve funções CRUD
+// ══════════════════════════════════════════
 
-// Materiais
-var _origSalvarMat = salvarMat;
-salvarMat = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  if(!g('mDesc').value.trim()){ alert('Informe a descrição.'); return; }
-  var qtd=Number(g('mQtd').value)||1, vunit=Number(g('mVunit').value)||0;
-  var isEdit = ed.mat !== null;
-  var payload = {
-    obra:obraAtual.id, data:g('mData').value||null, fornecedor:g('mForn').value,
-    categ:g('mCateg').value, descricao:g('mDesc').value,
-    qtd:qtd, unid:'un', vunit:vunit, vtot:qtd*vunit,
-    nf:g('mPgto').value, obs:g('mSt').value
-  };
-  var res;
-  if(isEdit && db.materiais[ed.mat] && db.materiais[ed.mat].id){
-    res = await supa.from('materiais').update(payload).eq('id', db.materiais[ed.mat].id);
-  } else {
-    res = await supa.from('materiais').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelMat = delMat;
-delMat = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.materiais[i];
-  if(m && m.id) await supa.from('materiais').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Mão de obra
-var _origSalvarMO = salvarMO;
-salvarMO = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var nome = g('moNome').value.trim();
-  if(!nome){ alert('Informe o colaborador.'); return; }
-  var isEdit = ed.mo !== null;
-  var payload = {
-    obra:obraAtual.id, nome:nome, func:g('moFunc').value,
-    periodo:g('moServ').value, data:g('moData').value||null,
-    valor:Number(g('moValor').value)||0, forma:g('moSt').value
-  };
-  var res;
-  if(isEdit && db.maoObra[ed.mo] && db.maoObra[ed.mo].id){
-    res = await supa.from('mao_obra').update(payload).eq('id', db.maoObra[ed.mo].id);
-  } else {
-    res = await supa.from('mao_obra').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelMO = delMO;
-delMO = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.maoObra[i];
-  if(m && m.id) await supa.from('mao_obra').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Indiretos
-var _origSalvarInd = salvarInd;
-salvarInd = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var isEdit = ed.ind !== null;
-  var payload = {
-    obra:obraAtual.id, categ:g('indCat').value, data:g('indData').value||null,
-    descricao:g('indDesc').value, valor:Number(g('indValor').value)||0,
-    obs:g('indSt').value
-  };
-  var res;
-  if(isEdit && db.indiretos[ed.ind] && db.indiretos[ed.ind].id){
-    res = await supa.from('indiretos').update(payload).eq('id', db.indiretos[ed.ind].id);
-  } else {
-    res = await supa.from('indiretos').insert(payload);
-  }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelInd = delInd;
-delInd = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.indiretos[i];
-  if(m && m.id) await supa.from('indiretos').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Fluxo de caixa
-var _origSalvarFx = salvarFx;
-salvarFx = async function() {
-  if(!obraAtual){ alert('Selecione uma obra.'); return; }
-  var payload = {
-    obra:obraAtual.id, descricao:g('fxTipo').value,
-    data:g('fxData').value||null, valor:Number(g('fxValor').value)||0,
-    obs:g('fxObs').value
-  };
-  var res = await supa.from('fluxo').insert(payload);
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  await load(); closeModal(); render();
-};
-
-var _origDelFx = delFx;
-delFx = async function(i) {
-  if(!confirm('Excluir?')) return;
-  var m = db.fluxo[i];
-  if(m && m.id) await supa.from('fluxo').delete().eq('id', m.id);
-  await load(); render();
-};
-
-// Clientes
-var _origSalvarCliente = salvarCliente;
+// CLIENTES
+var _origSalvarCliente = typeof salvarCliente !== 'undefined' ? salvarCliente : null;
 salvarCliente = async function() {
-  var nome = g('cliNome').value.trim();
-  if(!nome){ alert('Informe o nome do cliente.'); return; }
-  var isEdit = ed._cliIdx !== null;
-  var payload = {
-    tipo:g('cliTipo').value, nome:nome, doc:g('cliDoc').value,
-    razao:g('cliRazao').value, ie:g('cliIE').value,
-    tel:g('cliTel').value, email:g('cliEmail').value,
-    contato:g('cliContato').value, tel_contato:g('cliTelContato').value,
-    endereco:g('cliEnd').value, bairro:g('cliBairro').value,
-    cidade:g('cliCidade').value, cep:g('cliCep').value,
-    obs:g('cliObs').value, cadastro:new Date().toLocaleDateString('pt-BR')
-  };
-  var res;
-  if(isEdit && db.clientes[ed._cliIdx] && db.clientes[ed._cliIdx].id){
-    res = await supa.from('clientes').update(payload).eq('id', db.clientes[ed._cliIdx].id);
+  var nome = (document.getElementById('cNome')||{}).value || '';
+  var tel  = (document.getElementById('cTel')||{}).value || '';
+  var end  = (document.getElementById('cEnd')||{}).value || '';
+  var obs  = (document.getElementById('cObs')||{}).value || '';
+  if(!nome){ alert('Informe o nome'); return; }
+  if(ed.cliente !== null && db.clientes[ed.cliente]) {
+    var id = db.clientes[ed.cliente].id;
+    await supa.from('clientes').update({nome:nome,tel:tel,endereco:end,obs:obs}).eq('id',id);
   } else {
-    res = await supa.from('clientes').insert(payload);
+    await supa.from('clientes').insert({nome:nome,tel:tel,endereco:end,obs:obs});
   }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  ed._cliIdx=null;
-  await load(); closeModal(); renderClientes(); popularSelectCliente();
+  await load(); closeModal(); render();
 };
 
-var _origDelCliente = delCliente;
-delCliente = async function(i) {
-  if(!confirm('Excluir este cliente?')) return;
-  var c = db.clientes[i];
-  if(c && c.id) await supa.from('clientes').delete().eq('id', c.id);
-  await load(); renderClientes(); popularSelectCliente();
+var _origExcluirCliente = typeof excluirCliente !== 'undefined' ? excluirCliente : null;
+excluirCliente = async function(i) {
+  if(!confirm('Excluir cliente?')) return;
+  var id = db.clientes[i] && db.clientes[i].id;
+  if(id) await supa.from('clientes').delete().eq('id',id);
+  await load(); render();
 };
 
-// Colaboradores
-var _origSalvarColaborador = salvarColaborador;
-salvarColaborador = async function() {
-  var nome = g('colNome').value.trim();
-  if(!nome){ alert('Informe o nome.'); return; }
-  var isEdit = ed._colIdx !== null;
-  var payload = {
-    nome:nome, apelido:g('colApelido').value, cpf:g('colCpf').value,
-    rg:g('colRg').value, nasc:g('colNasc').value||null,
-    tel:g('colTel').value, email:g('colEmail').value,
-    func:g('colFunc').value, tipo:g('colTipoV').value,
-    espec:g('colEspec').value,
-    diaria:parseFloat(g('colDiaria').value)||null,
-    hora:parseFloat(g('colHora').value)||null,
-    banco:g('colBanco').value, agencia:g('colAgencia').value, conta:g('colConta').value,
-    pix:g('colPix').value, pix_tipo:g('colPixTipo').value,
-    obs:g('colObs').value, cadastro:new Date().toLocaleDateString('pt-BR')
-  };
-  var res;
-  if(isEdit && db.colaboradores[ed._colIdx] && db.colaboradores[ed._colIdx].id){
-    res = await supa.from('colaboradores').update(payload).eq('id', db.colaboradores[ed._colIdx].id);
+// COLABORADORES
+var _origSalvarColab = typeof salvarColab !== 'undefined' ? salvarColab : null;
+salvarColab = async function() {
+  var nome  = (document.getElementById('colNome')||{}).value || '';
+  var cargo = (document.getElementById('colCargo')||{}).value || '';
+  var tel   = (document.getElementById('colTel')||{}).value || '';
+  var obs   = (document.getElementById('colObs')||{}).value || '';
+  if(!nome){ alert('Informe o nome'); return; }
+  if(ed.colab !== null && db.colaboradores[ed.colab]) {
+    var id = db.colaboradores[ed.colab].id;
+    await supa.from('colaboradores').update({nome:nome,cargo:cargo,tel:tel,obs:obs}).eq('id',id);
   } else {
-    res = await supa.from('colaboradores').insert(payload);
+    await supa.from('colaboradores').insert({nome:nome,cargo:cargo,tel:tel,obs:obs});
   }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  ed._colIdx=null;
-  await load(); closeModal(); renderColaboradores(); popularSelectColab();
+  await load(); closeModal(); render();
 };
 
-var _origDelColab = delColab;
-delColab = async function(i) {
-  if(!confirm('Remover colaborador?')) return;
-  var c = db.colaboradores[i];
-  if(c && c.id) await supa.from('colaboradores').delete().eq('id', c.id);
-  await load(); renderColaboradores(); popularSelectColab();
+var _origExcluirColab = typeof excluirColab !== 'undefined' ? excluirColab : null;
+excluirColab = async function(i) {
+  if(!confirm('Excluir colaborador?')) return;
+  var id = db.colaboradores[i] && db.colaboradores[i].id;
+  if(id) await supa.from('colaboradores').delete().eq('id',id);
+  await load(); render();
 };
 
-// Duplicatas
-var _origSalvarDuplicata = salvarDuplicata;
-salvarDuplicata = async function() {
-  var desc = g('dupDesc').value.trim();
-  if(!desc){ alert('Informe a descrição.'); return; }
-  var valor = parseFloat(g('dupValor').value)||0;
-  if(!valor){ alert('Informe o valor.'); return; }
-  var venc1 = g('dupVenc').value;
-  if(!venc1){ alert('Informe o 1º vencimento.'); return; }
-  var isEdit = _dupEditIdx !== null;
-  var obraId = g('dupObra').value || null;
-  var payload = {
-    tipo:g('dupTipo').value, descricao:desc,
-    fornecedor:g('dupParte').value,
-    obra:obraId,
-    valor:valor, vencimento:venc1,
-    status:'aberta', pago:0,
-    forma:g('dupForma').value, obs:g('dupNotas').value
-  };
-  var res;
-  if(isEdit && db.duplicatas[_dupEditIdx] && db.duplicatas[_dupEditIdx].id){
-    res = await supa.from('duplicatas').update(payload).eq('id', db.duplicatas[_dupEditIdx].id);
+// ORÇAMENTOS (GVT)
+var _origSalvarGVT = typeof salvarGVT !== 'undefined' ? salvarGVT : null;
+salvarGVT = async function(gerarProposta) {
+  if(_origSalvarGVT) _origSalvarGVT(gerarProposta);
+  var orc = db.orcamentos[db.orcamentos.length - 1];
+  if(!orc) return;
+  if(orc.id) {
+    await supa.from('orcamentos').update(orc).eq('id', orc.id);
   } else {
-    res = await supa.from('duplicatas').insert(payload);
+    var r = await supa.from('orcamentos').insert(orc).select();
+    if(r.data && r.data[0]) orc.id = r.data[0].id;
   }
-  if(res.error){ alert('Erro: ' + res.error.message); return; }
-  _dupEditIdx=null;
-  await load(); closeModal(); renderDuplicatas(); renderAlertasDup();
+  save();
 };
 
-var _origDelDuplicata = delDuplicata;
-delDuplicata = async function(i) {
-  if(!confirm('Excluir esta duplicata?')) return;
-  var d = db.duplicatas[i];
-  if(d && d.id) await supa.from('duplicatas').delete().eq('id', d.id);
-  await load(); renderDuplicatas();
-};
-
-// Aprovar orçamento
-var _origAprovarOrcamento = aprovarOrcamento;
-aprovarOrcamento = async function(idx) {
-  idx = Number(idx);
-  var o = db.orcamentos[idx];
-  if(!o) return;
-  var novoStatus = o.status === 'aguardando_aprovacao' ? 'aprovado' : o.status;
-  await supa.from('orcamentos').update({status:novoStatus}).eq('id', o.id);
-  await load(); renderOrcamentos();
-  if(novoStatus === 'aprovado'){
-    ed._orcData = db.orcamentos.find(function(x){return x.id===o.id;});
-    ed._orcIdx = db.orcamentos.findIndex(function(x){return x.id===o.id;});
-    var ov = db.orcamentos[db.orcamentos.findIndex(function(x){return x.id===o.id;})];
-    g('oNome').value=ov.nome; g('oCliente').value=ov.cliente||'';
-    g('oEnd').value=(ov.endereco||'')+(ov.cidade?' — '+ov.cidade:'');
-    g('oResp2').value=ov.resp||'';
-    g('oInicio').value=ov.inicio||''; g('oFim').value=ov.prazo||'';
-    g('oValor').value=ov.preco?ov.preco.toFixed(2):'';
-    abrirModal('modalObra');
+// OBRAS
+var _origSalvarObra = typeof salvarObra !== 'undefined' ? salvarObra : null;
+salvarObra = async function() {
+  if(_origSalvarObra) _origSalvarObra();
+  var obra = obraAtual || db.obras[db.obras.length - 1];
+  if(!obra) return;
+  if(obra.id) {
+    await supa.from('obras').update(obra).eq('id', obra.id);
+  } else {
+    var r = await supa.from('obras').insert(obra).select();
+    if(r.data && r.data[0]) obra.id = r.data[0].id;
   }
 };
 
-// Finalizar obra
-var _origFinalizarObra = finalizarObra;
-finalizarObra = async function() {
-  if(!obraAtual) return;
-  if(!confirm('Finalizar esta obra?')) return;
-  await supa.from('obras').update({status:'Finalizada'}).eq('id', obraAtual.id);
-  await load();
-  obraAtual = db.obras.find(function(o){ return o.id === obraAtual.id; }) || null;
-  render();
-  alert('✅ Obra finalizada!');
+// MATERIAIS
+var _origSalvarMat = typeof salvarMat !== 'undefined' ? salvarMat : null;
+salvarMat = async function() {
+  if(_origSalvarMat) _origSalvarMat();
+  var item = db.materiais[db.materiais.length - 1];
+  if(!item) return;
+  if(item.id) {
+    await supa.from('materiais').update(item).eq('id', item.id);
+  } else {
+    var r = await supa.from('materiais').insert(item).select();
+    if(r.data && r.data[0]) item.id = r.data[0].id;
+  }
+};
+
+// MÃO DE OBRA
+var _origSalvarMO = typeof salvarMO !== 'undefined' ? salvarMO : null;
+salvarMO = async function() {
+  if(_origSalvarMO) _origSalvarMO();
+  var item = db.maoObra[db.maoObra.length - 1];
+  if(!item) return;
+  if(item.id) {
+    await supa.from('mao_obra').update(item).eq('id', item.id);
+  } else {
+    var r = await supa.from('mao_obra').insert(item).select();
+    if(r.data && r.data[0]) item.id = r.data[0].id;
+  }
+};
+
+// INDIRETOS
+var _origSalvarInd = typeof salvarInd !== 'undefined' ? salvarInd : null;
+salvarInd = async function() {
+  if(_origSalvarInd) _origSalvarInd();
+  var item = db.indiretos[db.indiretos.length - 1];
+  if(!item) return;
+  if(item.id) {
+    await supa.from('indiretos').update(item).eq('id', item.id);
+  } else {
+    var r = await supa.from('indiretos').insert(item).select();
+    if(r.data && r.data[0]) item.id = r.data[0].id;
+  }
+};
+
+// FLUXO DE CAIXA
+var _origSalvarFx = typeof salvarFx !== 'undefined' ? salvarFx : null;
+salvarFx = async function() {
+  if(_origSalvarFx) _origSalvarFx();
+  var item = db.fluxo[db.fluxo.length - 1];
+  if(!item) return;
+  if(item.id) {
+    await supa.from('fluxo').update(item).eq('id', item.id);
+  } else {
+    var r = await supa.from('fluxo').insert(item).select();
+    if(r.data && r.data[0]) item.id = r.data[0].id;
+  }
+};
+
+// DUPLICATAS
+var _origSalvarDup = typeof salvarDup !== 'undefined' ? salvarDup : null;
+salvarDup = async function() {
+  if(_origSalvarDup) _origSalvarDup();
+  var item = db.duplicatas[db.duplicatas.length - 1];
+  if(!item) return;
+  if(item.id) {
+    await supa.from('duplicatas').update(item).eq('id', item.id);
+  } else {
+    var r = await supa.from('duplicatas').insert(item).select();
+    if(r.data && r.data[0]) item.id = r.data[0].id;
+  }
 };
 
 // Indicador de loading
 (function addLoading(){
   var style = document.createElement('style');
-  style.textContent = '#sbLoading{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#0ea87e,#7c3aed);z-index:9999;animation:sbbar 1.5s linear infinite;display:none} @keyframes sbbar{0%{width:0%;opacity:1}70%{width:90%;opacity:1}100%{width:100%;opacity:0}}';
+  style.textContent = '#sbLoading{display:none!important} #sbLoading.ativo{display:flex!important}';
   document.head.appendChild(style);
-  var bar = document.createElement('div'); bar.id='sbLoading';
-  document.body.prepend(bar);
-  var origLoad = load;
-  window.load = async function(){
-    document.getElementById('sbLoading').style.display='block';
-    await origLoad();
-    document.getElementById('sbLoading').style.display='none';
- 
+})();
+
+var origLoad = load;
+window.load = async function(){
+  var el = document.getElementById('sbLoading');
+  if(el) el.classList.add('ativo');
+  await origLoad();
+  if(el) el.classList.remove('ativo');
+};
+
+</script>
+
+<div id="sbLoading" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:#fff;padding:24px 40px;border-radius:12px;font-size:18px;font-weight:600;">Carregando dados...</div>
+</div>
+</body>
+</html>
