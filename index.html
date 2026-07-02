@@ -1114,6 +1114,34 @@ function calcEletrica(){
   return total;
 }
 
+function getServicoGVT(){
+  var n=function(id){return Number((document.getElementById(id)&&document.getElementById(id).value)||0);};
+  var gv=function(id){var el=document.getElementById(id);return el?el.value:'';};
+  var s=[];
+  var fM2=n('ltFM2'),fPU=n('ltFPU');
+  if(fM2>0)s.push({nome:'Forro '+(gv('ltFTipo')||''),und:'m²',m2:fM2,pu:fPU,total:fM2*fPU,obs:gv('ltFObs')});
+  var dM2=n('ltDM2'),dPU=n('ltDPU');
+  if(dM2>0)s.push({nome:'Parede Drywall '+(gv('ltDSist')||''),und:'m²',m2:dM2,pu:dPU,total:dM2*dPU,obs:gv('ltDObs')});
+  var nM2=n('ltNM2'),nPU=n('ltNPU');
+  if(nM2>0)s.push({nome:'Divisória Naval — '+gv('ltNTipo'),und:'m²',m2:nM2,pu:nPU,total:nM2*nPU,obs:gv('ltNObs')});
+  var pM2=n('ltPM2'),pPU=n('ltPPU');
+  if(pM2>0)s.push({nome:'Piso '+(gv('ltPTipo')||''),und:'m²',m2:pM2,pu:pPU,total:pM2*pPU,obs:''});
+  var rM=n('ltPRodM'),rPU=n('ltPRodPU');
+  if(rM>0)s.push({nome:'Rodapé '+(gv('ltPRodape')||''),und:'m lin.',m2:rM,pu:rPU,total:rM*rPU,obs:''});
+  var piPar=n('ltPiParede'),piPU=n('ltPiPU'),piTet=n('ltPiTeto'),piTPU=n('ltPiTPU');
+  if(piPar>0||piTet>0)s.push({nome:'Pintura '+(gv('ltPiTipo')||'')+' '+(gv('ltPiCor')||''),und:'m²',m2:piPar+piTet,pu:(piPar*piPU+piTet*piTPU)/(piPar+piTet||1),total:piPar*piPU+piTet*piTPU,obs:''});
+  // Elétrica — agrupa num único item com total calculado
+  var totalElet=calcEletrica();
+  if(totalElet>0){
+    var ptTot=[n('ltEPtLuz'),n('ltEPtTom10'),n('ltEPtForca'),n('ltEPtAC'),n('ltEPtRede'),n('ltEPtTel'),n('ltEPtCCTV'),n('ltEPtAlarm')].reduce(function(a,b){return a+b;},0);
+    s.push({nome:'Instalações elétricas — '+(gv('ltETipoInst')||'')+(gv('ltECondicoes')&&gv('ltECondicoes')!=='Padrão residencial/comercial'?' · '+gv('ltECondicoes'):''),und:'vb',m2:ptTot||1,pu:ptTot?totalElet/ptTot:totalElet,total:totalElet,obs:gv('ltEObs')});
+  }
+  return s;
+}
+
+// alias para botão "+ Novo" do modal de mão de obra
+function abrirModalColab(){ if(typeof abrirModalColaborador==='function') abrirModalColaborador(); }
+
 function calcGVT(){
   var servicos=getServicoGVT();
   var totalServicos=servicos.reduce(function(a,s){return a+s.total;},0);
