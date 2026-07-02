@@ -672,6 +672,20 @@ tr:hover td{background:#f8f9fa}
     <div id="previewParcelas" style="margin-top:8px"></div>
   </div>
 
+  <div style="background:#eff6ff;border-radius:8px;padding:12px;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;color:#1e40af;letter-spacing:1px;margin-bottom:8px">DOCUMENTOS — NOTA FISCAL / DUPLICATA</div>
+    <div class="fr">
+      <div class="fg"><label>📄 Nota fiscal (PDF ou foto)</label>
+        <input type="file" id="dupFileNF" accept="application/pdf,image/*">
+      </div>
+      <div class="fg"><label>💳 Duplicata / Boleto (PDF ou foto)</label>
+        <input type="file" id="dupFileDup" accept="application/pdf,image/*">
+      </div>
+    </div>
+    <div id="dupAnexosAtuais" style="margin-top:6px"></div>
+    <div id="dupUploadStatus" style="font-size:12px;font-weight:600;color:#1e40af;margin-top:4px"></div>
+  </div>
+
   <div style="background:#f0fdf4;border-radius:8px;padding:12px;margin-bottom:10px">
     <div style="font-size:11px;font-weight:700;color:#166534;letter-spacing:1px;margin-bottom:8px">LEMBRETES</div>
     <div class="fr">
@@ -1047,12 +1061,13 @@ async function load(){
         data:r.data,valor:Number(r.valor||0),obs:r.obs||'', _sbId:r.id};
     });
     db.duplicatas = (dups.data||[]).map(function(r){
-      var parcelas=[{venc:r.vencimento,valor:Number(r.valor||0),paga:r.status==='paga',
+      var parcelas=(r.parcelas&&r.parcelas.length)?r.parcelas:[{venc:r.vencimento,valor:Number(r.valor||0),paga:r.status==='paga',
         dataPgto:null,valorPago:Number(r.pago||0),comprovante:''}];
-      return {id:r.id,tipo:r.tipo,categ:'Material',desc:r.descricao,
+      return {id:r.id,tipo:r.tipo,categ:r.categ||'Material',desc:r.descricao,
         parte:r.fornecedor,obraId:r.obra,valorTotal:Number(r.valor||0),
-        nParc:1,parcelas:parcelas,forma:r.forma||'Pix',nf:'',
-        lembrete:3,prioridade:'normal',notas:[], _sbId:r.id};
+        nParc:r.n_parc||parcelas.length,parcelas:parcelas,forma:r.forma||'Pix',nf:r.nf||'',
+        lembrete:r.lembrete||3,prioridade:r.prioridade||'normal',
+        notas:r.notas||[],anexos:r.anexos||[],criado:r.criado||'', _sbId:r.id};
     });
     db.clientes = (clis.data||[]).map(function(r){
       return {id:r.id,tipo:r.tipo,nome:r.nome,doc:r.doc,razao:r.razao,ie:r.ie,
@@ -1697,6 +1712,7 @@ function renderDuplicatas(){
       '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">'+
         '<button class="btn sm" onclick="abrirModalDuplicata('+ri+')">✏️ Editar</button>'+
         '<button class="btn sm" onclick="abrirNotas('+ri+')">📝 Notas'+(dup.notas&&dup.notas.length?' ('+dup.notas.length+')':'')+'</button>'+
+        (dup.anexos&&dup.anexos.length?dup.anexos.map(function(a){return '<a class="btn sm" style="text-decoration:none" href="'+a.url+'" target="_blank" rel="noopener">'+(a.tipo==='nota-fiscal'?'📄 Ver NF':'💳 Ver duplicata')+'</a>';}).join(''):'')+
         (st!=='paga'?'<button class="btn sm s" onclick="abrirBaixa('+ri+',0)">✅ Pagar próxima</button>':'')+
         '<button class="btn sm d" onclick="delDuplicata('+ri+')">✕ Excluir</button>'+
       '</div>'+
@@ -2690,6 +2706,20 @@ delColab = async function(i) {
 };
 
 // Duplicatas
+// upload de documento (NF/duplicata) para o Supabase Storage
+async function uploadDocDuplicata(inputId, rotulo){
+  var inp=g(inputId);
+  if(!inp||!inp.files||!inp.files.length) return null;
+  var f=inp.files[0];
+  if(f.size>10*1024*1024){ alert('O arquivo "'+f.name+'" excede o limite de 10 MB.'); throw new Error('tamanho'); }
+  var ext=(f.name.indexOf('.')>-1?f.name.split('.').pop():'bin').toLowerCase().replace(/[^a-z0-9]/g,'');
+  var path='duplicatas/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'-'+rotulo+'.'+ext;
+  var up=await supa.storage.from('documentos').upload(path, f, {contentType:f.type||'application/octet-stream'});
+  if(up.error){ alert('Erro ao enviar '+rotulo+': '+up.error.message); throw new Error(up.error.message); }
+  var pub=supa.storage.from('documentos').getPublicUrl(path);
+  return {tipo:rotulo, nome:f.name, url:pub.data.publicUrl, path:path, enviado:new Date().toLocaleString('pt-BR')};
+}
+
 var _origSalvarDuplicata = salvarDuplicata;
 salvarDuplicata = async function() {
   var desc = g('dupDesc').value.trim();
@@ -2699,24 +2729,83 @@ salvarDuplicata = async function() {
   var venc1 = g('dupVenc').value;
   if(!venc1){ alert('Informe o 1º vencimento.'); return; }
   var isEdit = _dupEditIdx !== null;
+  var atual = isEdit ? db.duplicatas[_dupEditIdx] : null;
   var obraId = g('dupObra').value || null;
+  var nParc = parseInt(g('dupNParcelas').value)||1;
+  var vpp = valor/nParc;
+
+  // gera parcelas preservando pagamentos já feitos
+  var existentes = atual ? (atual.parcelas||[]) : [];
+  var parcelas = [];
+  for(var i=0;i<nParc;i++){
+    var dt = new Date(venc1+'T00:00:00');
+    dt.setMonth(dt.getMonth()+i);
+    var ex = existentes[i]||{};
+    parcelas.push({venc:dt.toISOString().slice(0,10), valor:vpp, paga:ex.paga||false,
+      dataPgto:ex.dataPgto||null, valorPago:ex.valorPago||0, comprovante:ex.comprovante||''});
+  }
+  var totalPago = parcelas.reduce(function(a,p){return a+(p.paga?(p.valorPago||p.valor):0);},0);
+  var todasPagas = parcelas.length>0 && parcelas.every(function(p){return p.paga;});
+
+  // notas: preserva histórico + nota inicial digitada
+  var notas = atual ? (atual.notas||[]).slice() : [];
+  var notaInicial = g('dupNotas').value.trim();
+  if(notaInicial) notas.push({texto:notaInicial, data:new Date().toLocaleString('pt-BR'), auto:false});
+
+  // anexos: preserva existentes e envia novos arquivos
+  var anexos = atual ? (atual.anexos||[]).slice() : [];
+  var st = g('dupUploadStatus');
+  try{
+    if(st) st.textContent = '⏳ Enviando documentos...';
+    var nfDoc = await uploadDocDuplicata('dupFileNF','nota-fiscal');
+    if(nfDoc){ anexos = anexos.filter(function(a){return a.tipo!=='nota-fiscal';}); anexos.push(nfDoc); }
+    var dupDoc = await uploadDocDuplicata('dupFileDup','duplicata');
+    if(dupDoc){ anexos = anexos.filter(function(a){return a.tipo!=='duplicata';}); anexos.push(dupDoc); }
+  }catch(e){ if(st) st.textContent=''; return; }
+  if(st) st.textContent='';
+
   var payload = {
-    tipo:g('dupTipo').value, descricao:desc,
-    fornecedor:g('dupParte').value,
-    obra:obraId,
+    tipo:g('dupTipo').value, categ:g('dupCateg').value, descricao:desc,
+    fornecedor:g('dupParte').value, obra:obraId,
     valor:valor, vencimento:venc1,
-    status:'aberta', pago:0,
-    forma:g('dupForma').value, obs:g('dupNotas').value
+    n_parc:nParc, parcelas:parcelas,
+    status: todasPagas ? 'paga' : 'aberta', pago: totalPago,
+    forma:g('dupForma').value, nf:g('dupNF').value,
+    lembrete:parseInt(g('dupLembrete').value)||3,
+    prioridade:g('dupPrioridade').value,
+    notas:notas, anexos:anexos,
+    obs:notaInicial
   };
+  if(!isEdit){ payload.criado = new Date().toLocaleDateString('pt-BR'); }
+
   var res;
-  if(isEdit && db.duplicatas[_dupEditIdx] && db.duplicatas[_dupEditIdx].id){
-    res = await supa.from('duplicatas').update(payload).eq('id', db.duplicatas[_dupEditIdx].id);
+  if(isEdit && atual && atual.id){
+    res = await supa.from('duplicatas').update(payload).eq('id', atual.id);
   } else {
     res = await supa.from('duplicatas').insert(payload);
   }
   if(res.error){ alert('Erro: ' + res.error.message); return; }
   _dupEditIdx=null;
   await load(); closeModal(); renderDuplicatas(); renderAlertasDup();
+};
+
+// ao abrir o modal de duplicata: limpa inputs de arquivo e lista anexos existentes
+var _origAbrirModalDuplicata2 = abrirModalDuplicata;
+abrirModalDuplicata = function(idx){
+  _origAbrirModalDuplicata2(idx);
+  if(g('dupFileNF')) g('dupFileNF').value='';
+  if(g('dupFileDup')) g('dupFileDup').value='';
+  if(g('dupUploadStatus')) g('dupUploadStatus').textContent='';
+  var box=g('dupAnexosAtuais');
+  if(!box) return;
+  var d=(idx!==undefined&&idx!==null)?db.duplicatas[idx]:null;
+  if(d&&d.anexos&&d.anexos.length){
+    box.innerHTML='<div style="font-size:11px;color:#64748b;margin-bottom:4px">Já anexados (enviar novo arquivo substitui):</div>'+
+      d.anexos.map(function(a){
+        return '<a href="'+a.url+'" target="_blank" rel="noopener" class="btn sm" style="margin:2px 6px 2px 0;text-decoration:none">'+
+          (a.tipo==='nota-fiscal'?'📄 ':'💳 ')+a.nome+'</a>';
+      }).join('');
+  } else { box.innerHTML=''; }
 };
 
 var _origDelDuplicata = delDuplicata;
