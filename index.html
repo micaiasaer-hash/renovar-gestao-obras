@@ -2809,25 +2809,33 @@ function restaurarRascunhoGVT(){
   try{ draft=JSON.parse(raw); }catch(e){ limparRascunhoGVT(); return; }
   if(!draft||!draft.vals){ limparRascunhoGVT(); return; }
   var quando=draft.ts?new Date(draft.ts).toLocaleString('pt-BR'):'';
-  if(!confirm('📝 Existe um GVT com alterações não salvas'+(quando?' ('+quando+')':'')+'.\n\nDeseja restaurar e continuar editando?')){
-    limparRascunhoGVT(); return;
-  }
-  var idx=null;
-  if(draft.orcId!==null&&draft.orcId!==undefined){
-    var i=db.orcamentos.findIndex(function(x){return String(x.id)===String(draft.orcId);});
-    if(i>=0)idx=i;
-  }
-  showPage('orcamentos');
-  abrirModalGVT(idx===null?undefined:idx);
-  // aplica os valores do rascunho após o modal montar os selects
-  setTimeout(function(){
-    Object.keys(draft.vals).forEach(function(id){
-      var el=g(id);
-      if(el)el.value=draft.vals[id];
-    });
-    if(typeof calcEletrica==='function')calcEletrica();
-    calcGVT();
-  },200);
+  // banner não-bloqueante no topo da página
+  var bar=document.createElement('div');
+  bar.id='gvtDraftBar';
+  bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:10000;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:10px 16px;display:flex;gap:12px;align-items:center;justify-content:center;font-size:13px;flex-wrap:wrap';
+  bar.innerHTML='<span>📝 Existe um GVT com alterações não salvas'+(quando?' <b>('+quando+')</b>':'')+'.</span>'+
+    '<button class="btn p" style="padding:5px 14px" id="gvtDraftRestaurar">Restaurar e continuar editando</button>'+
+    '<button class="btn" style="padding:5px 14px" id="gvtDraftDescartar">Descartar</button>';
+  document.body.appendChild(bar);
+  document.getElementById('gvtDraftDescartar').onclick=function(){ limparRascunhoGVT(); bar.remove(); };
+  document.getElementById('gvtDraftRestaurar').onclick=function(){
+    bar.remove();
+    var idx=null;
+    if(draft.orcId!==null&&draft.orcId!==undefined){
+      var i=db.orcamentos.findIndex(function(x){return String(x.id)===String(draft.orcId);});
+      if(i>=0)idx=i;
+    }
+    showPage('orcamentos');
+    abrirModalGVT(idx===null?undefined:idx);
+    setTimeout(function(){
+      Object.keys(draft.vals).forEach(function(id){
+        var el=g(id);
+        if(el)el.value=draft.vals[id];
+      });
+      if(typeof calcEletrica==='function')calcEletrica();
+      calcGVT();
+    },200);
+  };
 }
 
 // grava rascunho a cada digitação (com debounce) e ao sair da aba
