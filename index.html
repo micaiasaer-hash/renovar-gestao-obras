@@ -2386,33 +2386,35 @@ function delFx(i){if(!confirm('Excluir?'))return;db.fluxo.splice(i,1);save();ren
 
 // Orçamentos
 function buildLtGVT(){
+  var V=function(id){var el=document.getElementById(id);return el?el.value:'';};
+  var N=function(id){var el=document.getElementById(id);return Number((el&&el.value)||0);};
   return {
-    forro:{tipo:g('ltFTipo').value,m2:nv('ltFM2'),pu:nv('ltFPU'),pd:nv('ltFPD'),la:g('ltFLa').value,obs:g('ltFObs').value},
-    drywall:{sist:g('ltDSist').value,m2:nv('ltDM2'),pu:nv('ltDPU'),pd:nv('ltDPD'),la:g('ltDLa').value,obs:g('ltDObs').value},
-    naval:{tipo:g('ltNTipo').value,m2:nv('ltNM2'),pu:nv('ltNPU'),h:nv('ltNH'),cor:g('ltNCor').value,obs:g('ltNObs').value},
-    piso:{tipo:g('ltPTipo').value,m2:nv('ltPM2'),pu:nv('ltPPU'),rodape:g('ltPRodape').value,rodM:nv('ltPRodM'),rodPU:nv('ltPRodPU'),obs:g('ltPObs').value},
-    pintura:{tipo:g('ltPiTipo').value,parede:nv('ltPiParede'),pu:nv('ltPiPU'),teto:nv('ltPiTeto'),tpu:nv('ltPiTPU'),cor:g('ltPiCor').value},
+    forro:{tipo:V('ltFTipo'),m2:N('ltFM2'),pu:N('ltFPU'),pd:N('ltFPD'),la:V('ltFLa'),obs:V('ltFObs')},
+    drywall:{sist:V('ltDSist'),m2:N('ltDM2'),pu:N('ltDPU'),pd:N('ltDPD'),la:V('ltDLa'),obs:V('ltDObs')},
+    naval:{tipo:V('ltNTipo'),m2:N('ltNM2'),pu:N('ltNPU'),h:N('ltNH'),cor:V('ltNCor'),obs:V('ltNObs')},
+    piso:{tipo:V('ltPTipo'),m2:N('ltPM2'),pu:N('ltPPU'),rodape:V('ltPRodape'),rodM:N('ltPRodM'),rodPU:N('ltPRodPU'),obs:V('ltPObs')},
+    pintura:{tipo:V('ltPiTipo'),parede:N('ltPiParede'),pu:N('ltPiPU'),teto:N('ltPiTeto'),tpu:N('ltPiTPU'),cor:V('ltPiCor')},
     eletrica:{
-      padrao:g('ltEPadrao').value,carga:nv('ltECarga'),quadroExist:g('ltEQuadroExist').value,
-      nDisj:nv('ltEDisj'),projeto:g('ltEProjeto').value,art:g('ltEArt').value,
-      tipoInst:g('ltETipoInst').value,eletroduto:g('ltEEletroduto').value,
-      ptLuz:nv('ltEPtLuz'),ptLuzPU:nv('ltEPtLuzPU'),
-      ptTom10:nv('ltEPtTom10'),ptTom10PU:nv('ltEPtTom10PU'),
-      ptForca:nv('ltEPtForca'),ptForcaPU:nv('ltEPtForcaPU'),
-      ptAC:nv('ltEPtAC'),ptACPU:nv('ltEPtACPU'),
-      ptRede:nv('ltEPtRede'),ptRedePU:nv('ltEPtRedePU'),
-      ptTel:nv('ltEPtTel'),ptTelPU:nv('ltEPtTelPU'),
-      ptCCTV:nv('ltEPtCCTV'),ptCCTVPU:nv('ltEPtCCTVPU'),
-      ptAlarm:nv('ltEPtAlarm'),ptAlarmPU:nv('ltEPtAlarmPU'),
-      qd:nv('ltEQD'),qdPU:nv('ltEQDPU'),
-      eletM:nv('ltEEletM'),eletMPU:nv('ltEEletMPU'),
-      cabo25:nv('ltECabo25'),cabo25PU:nv('ltECabo25PU'),
-      cabo4:nv('ltECabo4'),cabo4PU:nv('ltECabo4PU'),
-      lum:nv('ltELum'),lumPU:nv('ltELumPU'),
-      moH:nv('ltEMOH'),moHPU:nv('ltEMOHPU'),
-      condicoes:g('ltECondicoes').value,dific:g('ltEDific').value,obs:g('ltEObs').value
+      padrao:V('ltEPadrao'),carga:N('ltECarga'),quadroExist:V('ltEQuadroExist'),
+      nDisj:N('ltEDisj'),projeto:V('ltEProjeto'),art:V('ltEArt'),
+      tipoInst:V('ltETipoInst'),eletroduto:V('ltEEletroduto'),
+      ptLuz:N('ltEPtLuz'),ptLuzPU:N('ltEPtLuzPU'),
+      ptTom10:N('ltEPtTom10'),ptTom10PU:N('ltEPtTom10PU'),
+      ptForca:N('ltEPtForca'),ptForcaPU:N('ltEPtForcaPU'),
+      ptAC:N('ltEPtAC'),ptACPU:N('ltEPtACPU'),
+      ptRede:N('ltEPtRede'),ptRedePU:N('ltEPtRedePU'),
+      ptTel:N('ltEPtTel'),ptTelPU:N('ltEPtTelPU'),
+      ptCCTV:N('ltEPtCCTV'),ptCCTVPU:N('ltEPtCCTVPU'),
+      ptAlarm:N('ltEPtAlarm'),ptAlarmPU:N('ltEPtAlarmPU'),
+      qd:N('ltEQD'),qdPU:N('ltEQDPU'),
+      eletM:N('ltEEletM'),eletMPU:N('ltEEletMPU'),
+      cabo25:N('ltECabo25'),cabo25PU:N('ltECabo25PU'),
+      cabo4:N('ltECabo4'),cabo4PU:N('ltECabo4PU'),
+      lum:N('ltELum'),lumPU:N('ltELumPU'),
+      moH:N('ltEMOH'),moHPU:N('ltEMOHPU'),
+      condicoes:V('ltECondicoes'),dific:V('ltEDific'),obs:V('ltEObs')
     },
-    demolicao:{parede:nv('ltDemP'),piso:nv('ltDemPiso'),forro:g('ltDemForro').value,entulho:g('ltDemEnt').value,obs:g('ltDemObs').value}
+    demolicao:{parede:N('ltDemP'),piso:N('ltDemPiso'),forro:V('ltDemForro'),entulho:V('ltDemEnt'),obs:V('ltDemObs')}
   };
 }
 
