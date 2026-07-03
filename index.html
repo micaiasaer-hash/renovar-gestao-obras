@@ -105,6 +105,31 @@ tr:hover td{background:#f8f9fa}
 .prop-validade{background:#f8f9fa;padding:16px 32px;font-size:12px;color:#64748b;line-height:1.8}
 .prop-assin{padding:20px 32px;display:grid;grid-template-columns:1fr 1fr;gap:32px}
 .prop-assin-box{text-align:center;padding-top:40px;border-top:1px solid #1a1a1a;font-size:12px;color:#64748b}
+
+/* LOGIN */
+#loginOverlay{position:fixed;inset:0;z-index:30000;display:flex;background:#0f1115}
+#loginArt{flex:1.25;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;
+  background:radial-gradient(1100px 600px at 20% 10%,#2a2f3a 0%,#14171d 55%,#0b0d11 100%)}
+#loginArt::before{content:'';position:absolute;inset:0;opacity:.08;
+  background-image:linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px);background-size:44px 44px}
+#loginArt .tagline{color:#9aa3b2;font-size:13px;letter-spacing:3px;text-transform:uppercase}
+#loginArt .frase{color:#e2e8f0;font-size:20px;font-weight:600;max-width:420px;text-align:center;line-height:1.45;z-index:1}
+#loginFotoBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+#loginBox{flex:1;display:flex;align-items:center;justify-content:center;background:#fff}
+#loginBox form{width:min(88%,360px)}
+#loginBox label{display:block;font-size:12px;font-weight:600;color:#475569;margin:14px 0 4px}
+#loginBox input{width:100%;padding:11px 12px;border:1px solid var(--bdr);border-radius:10px;font-size:14px}
+@media(max-width:760px){#loginOverlay{flex-direction:column}#loginArt{flex:0 0 190px}}
+.chip-user{display:flex;align-items:center;gap:8px;margin-left:auto;background:#2d2d2d;border:1px solid #444;border-radius:20px;padding:4px 6px 4px 12px;color:#fff;font-size:12px}
+.chip-user b{font-size:12px}
+.chip-user button{background:#444;border:none;color:#fff;border-radius:14px;padding:4px 10px;font-size:11px;cursor:pointer}
+/* PROGRESSO */
+.etapa-row{border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff}
+input[type=range].prog{width:100%;accent-color:#0ea87e}
+.prog-big{height:14px;background:#e2e8f0;border-radius:8px;overflow:hidden}
+.prog-big>div{height:100%;background:linear-gradient(90deg,#0ea87e,#34d399);transition:width .3s}
+.rdo-card{border:1px solid var(--bdr);border-radius:10px;padding:12px;margin-bottom:10px;background:#fff}
+.rdo-foto{height:70px;width:70px;border-radius:6px;object-fit:cover;border:1px solid var(--bdr)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -116,6 +141,34 @@ tr:hover td{background:#f8f9fa}
 </script>
 </head>
 <body>
+<!-- TELA DE LOGIN -->
+<div id="loginOverlay">
+  <div id="loginArt">
+    <img id="loginFotoBg" alt="">
+    <svg width="120" height="120" viewBox="0 0 60 60" fill="none" style="z-index:1">
+      <circle cx="30" cy="30" r="30" fill="white"/>
+      <path d="M15 42 L22 22 L29 34 L34 26 L41 42Z" fill="#1a1a1a" opacity=".85"/>
+      <path d="M26 22 L30 30 L34 26 L38 20 L33 15 L28 13 L26 22Z" fill="#1a1a1a" opacity=".45"/>
+    </svg>
+    <div style="z-index:1;text-align:center">
+      <div style="color:#fff;font-size:34px;font-weight:800;letter-spacing:6px">RENOVAR</div>
+      <div class="tagline">Reformas e Construções</div>
+    </div>
+    <div class="frase">Cada obra bem gerida começa com uma equipe bem informada.</div>
+  </div>
+  <div id="loginBox">
+    <form onsubmit="event.preventDefault();fazerLogin();">
+      <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">Bem-vindo 👷</h2>
+      <p style="font-size:13px;color:#64748b">Entre com o usuário e senha fornecidos pela administração.</p>
+      <label>Usuário</label>
+      <input id="loginUser" autocomplete="username" placeholder="seu.usuario">
+      <label>Senha</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••">
+      <div id="loginErro" style="color:#dc2626;font-size:12px;font-weight:600;margin-top:8px;min-height:16px"></div>
+      <button class="btn p" style="width:100%;padding:12px;font-size:14px;margin-top:6px">Entrar</button>
+    </form>
+  </div>
+</div>
 
 <!-- TOPBAR -->
 <div class="topbar no-print">
@@ -128,7 +181,8 @@ tr:hover td{background:#f8f9fa}
   </svg>
   <select id="obraSelect" onchange="selectObra(this.value)"></select>
   <input style="width:160px" type="text" placeholder="🔍 Buscar..." oninput="buscar(this.value)">
-  <button class="btn" style="background:#2d2d2d;color:#fff;border-color:#444" onclick="showPage('orcamentos')">+ Novo GVT / Orçamento</button>
+  <button class="btn" id="btnNovoGvtHeader" style="background:#2d2d2d;color:#fff;border-color:#444" onclick="showPage('orcamentos')">+ Novo GVT / Orçamento</button>
+  <div class="chip-user" id="userChip" style="display:none"></div>
 </div>
 
 <!-- NAV -->
@@ -145,7 +199,9 @@ tr:hover td{background:#f8f9fa}
   <button onclick="showPage('duplicatas',this)">💳 Duplicatas</button>
   <button onclick="showPage('clientes',this)">👤 Clientes</button>
   <button onclick="showPage('colaboradores',this)">👷 Colaboradores</button>
+  <button onclick="showPage('progresso',this)">📈 Acompanhamento</button>
   <button onclick="showPage('tabela',this)">💲 Preços</button>
+  <button onclick="showPage('usuarios',this)">🔐 Usuários</button>
 </nav>
 
 <!-- DASHBOARD -->
@@ -310,6 +366,32 @@ tr:hover td{background:#f8f9fa}
   </div>
   <div id="listaColaboradores"></div>
 </div>
+<!-- ACOMPANHAMENTO DE OBRA -->
+<div id="progresso" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <h2 style="font-size:16px;font-weight:700">📈 Acompanhamento de Obra</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn" onclick="criarEtapasPadrao()">✨ Etapas padrão</button>
+      <button class="btn" onclick="abrirModalEtapa()">+ Nova etapa</button>
+      <button class="btn p" onclick="abrirModalRDO()">📓 Diário do dia (RDO)</button>
+    </div>
+  </div>
+  <div id="progConteudo"></div>
+</div>
+
+<!-- USUÁRIOS -->
+<div id="usuarios" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <h2 style="font-size:16px;font-weight:700">🔐 Usuários e Acessos</h2>
+    <button class="btn p" onclick="abrirModalUsuario()">+ Novo usuário</button>
+  </div>
+  <div class="card" style="margin-bottom:10px;font-size:12px;color:#64748b">
+    Cada colaborador entra com usuário e senha próprios e vê apenas as telas liberadas.
+    Perfis: <b>👑 Admin</b> (tudo) · <b>🏗 Obra</b> · <b>💰 Financeiro</b> · <b>📋 Comercial</b> — ou personalize tela a tela.
+  </div>
+  <div id="listaUsuarios"></div>
+</div>
+
 <div id="tabela" class="page">
   <div class="card">
     <h3>💲 Tabela de preços — SEDOP PA Fev/2025 + Real Drywall</h3>
@@ -718,6 +800,91 @@ tr:hover td{background:#f8f9fa}
   </div>
 </div>
 
+<!-- MODAL ETAPA -->
+<div class="modal" id="modalEtapa" style="width:min(96vw,560px)">
+  <h3 id="tituloEtapa">🧱 Nova etapa</h3>
+  <div class="fr">
+    <div class="fg" style="grid-column:1/-1"><label>Nome da etapa *</label><input id="etNome" placeholder="Ex: Instalações elétricas"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Peso (importância)</label>
+      <select id="etPeso"><option value="1">1 — leve</option><option value="2">2</option><option value="3" selected>3 — média</option><option value="4">4</option><option value="5">5 — pesada</option></select>
+    </div>
+    <div class="fg"><label>Progresso (%)</label><input type="number" id="etProg" min="0" max="100" value="0"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Início previsto</label><input type="date" id="etIniPrev"></div>
+    <div class="fg"><label>Término previsto</label><input type="date" id="etFimPrev"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Início real</label><input type="date" id="etIniReal"></div>
+    <div class="fg"><label>Término real</label><input type="date" id="etFimReal"></div>
+  </div>
+  <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Observações</label><textarea id="etObs" rows="2" style="resize:vertical"></textarea></div></div>
+  <div class="mf2">
+    <button class="btn" onclick="closeModal()">Cancelar</button>
+    <button class="btn p" onclick="salvarEtapa()">💾 Salvar etapa</button>
+  </div>
+</div>
+
+<!-- MODAL RDO -->
+<div class="modal" id="modalRDO" style="width:min(96vw,640px)">
+  <h3>📓 Diário de Obra (RDO)</h3>
+  <div class="fr">
+    <div class="fg"><label>Data *</label><input type="date" id="rdoData"></div>
+    <div class="fg"><label>Clima</label>
+      <select id="rdoClima"><option>☀️ Sol</option><option>⛅ Nublado</option><option>🌧 Chuva</option><option>⛈ Chuva forte</option></select>
+    </div>
+  </div>
+  <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Equipe presente</label>
+    <div id="rdoEquipe" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;border:1px solid var(--bdr);border-radius:8px;max-height:120px;overflow:auto;font-size:13px"></div>
+  </div></div>
+  <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Serviços executados hoje *</label>
+    <textarea id="rdoServicos" rows="3" style="resize:vertical" placeholder="Ex: Conclusão do forro da sala 2, início da pintura..."></textarea>
+  </div></div>
+  <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Ocorrências / Pendências</label>
+    <textarea id="rdoOcorrencias" rows="2" style="resize:vertical" placeholder="Atrasos, faltas, problemas, visitas..."></textarea>
+  </div></div>
+  <div class="fr"><div class="fg" style="grid-column:1/-1"><label>📷 Fotos do dia</label>
+    <input type="file" id="rdoFotos" accept="image/*" multiple>
+    <div id="rdoUploadStatus" style="font-size:12px;font-weight:600;color:#1e40af;margin-top:4px"></div>
+  </div></div>
+  <div class="mf2">
+    <button class="btn" onclick="closeModal()">Cancelar</button>
+    <button class="btn p" onclick="salvarRDO()">💾 Registrar diário</button>
+  </div>
+</div>
+
+<!-- MODAL USUÁRIO -->
+<div class="modal" id="modalUsuario" style="width:min(96vw,600px)">
+  <h3 id="tituloUsuario">🔐 Novo usuário</h3>
+  <div class="fr">
+    <div class="fg"><label>Nome *</label><input id="uNome" placeholder="Nome do colaborador"></div>
+    <div class="fg"><label>Usuário (login) *</label><input id="uLogin" placeholder="ex: joao.silva" autocomplete="off"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Função / Perfil</label>
+      <select id="uFuncao" onchange="preencherTelasPerfil()">
+        <option value="admin">👑 Admin — acesso total</option>
+        <option value="obra" selected>🏗 Obra</option>
+        <option value="financeiro">💰 Financeiro</option>
+        <option value="comercial">📋 Comercial</option>
+      </select>
+    </div>
+    <div class="fg"><label id="uSenhaLabel">Senha *</label><input id="uSenha" type="text" placeholder="Senha de acesso" autocomplete="off"></div>
+  </div>
+  <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Telas que este usuário pode acessar</label>
+    <div id="uTelas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;padding:10px;border:1px solid var(--bdr);border-radius:8px;font-size:13px"></div>
+  </div></div>
+  <div class="fr"><div class="fg"><label>Situação</label>
+    <select id="uAtivo"><option value="true">✅ Ativo</option><option value="false">🚫 Desativado</option></select>
+  </div></div>
+  <div class="mf2">
+    <button class="btn" onclick="closeModal()">Cancelar</button>
+    <button class="btn p" onclick="salvarUsuario()">💾 Salvar usuário</button>
+  </div>
+</div>
+
 <!-- MODAL BAIXA/PAGAMENTO -->
 <div class="modal" id="modalBaixa" style="width:min(96vw,480px)">
   <h3 id="tituloBaixa">✅ Registrar pagamento</h3>
@@ -1082,6 +1249,14 @@ async function load(){
         conta:r.conta,pix:r.pix,pixTipo:r.pix_tipo,obs:r.obs,
         cadastro:r.cadastro, _sbId:r.id};
     });
+    var extra = await Promise.all([
+      supa.from('usuarios').select('*').order('nome'),
+      supa.from('etapas_obra').select('*').order('ordem'),
+      supa.from('rdo').select('*').order('data',{ascending:false})
+    ]);
+    db.usuarios = extra[0].data||[];
+    db.etapas   = extra[1].data||[];
+    db.rdos     = extra[2].data||[];
     if(db.obras.length) obraAtual=db.obras[0];
   } catch(e){ console.error('Erro ao carregar:', e); }
 }
@@ -2866,6 +3041,383 @@ finalizarObra = async function() {
 })();
 
 
+
+// ═══════════════════════════════════════════════════════
+// AUTENTICAÇÃO, PERFIS E CONTROLE DE ACESSO
+// ═══════════════════════════════════════════════════════
+var TELAS_APP=[
+  {id:'dash',label:'📊 Dashboard'},{id:'orcamentos',label:'📋 GVT / Orçamentos'},
+  {id:'obras',label:'🏗 Obras ativas'},{id:'progresso',label:'📈 Acompanhamento'},
+  {id:'materiais',label:'📦 Materiais'},{id:'maoObra',label:'👷 Mão de obra'},
+  {id:'indiretos',label:'🧾 Indiretos'},{id:'fluxo',label:'💳 Fluxo de caixa'},
+  {id:'prevReal',label:'📈 Prev × Real'},{id:'fechamento',label:'🏁 Fechamento'},
+  {id:'duplicatas',label:'💳 Duplicatas'},{id:'clientes',label:'👤 Clientes'},
+  {id:'colaboradores',label:'👷 Colaboradores'},{id:'tabela',label:'💲 Preços'},
+  {id:'usuarios',label:'🔐 Usuários'}
+];
+var PERFIS={
+  admin:{label:'👑 Admin',telas:TELAS_APP.map(function(t){return t.id;})},
+  obra:{label:'🏗 Obra',telas:['dash','obras','progresso','materiais','maoObra','colaboradores']},
+  financeiro:{label:'💰 Financeiro',telas:['dash','duplicatas','fluxo','fechamento','indiretos','prevReal']},
+  comercial:{label:'📋 Comercial',telas:['dash','orcamentos','clientes','tabela']}
+};
+var usuarioAtual=null;
+
+async function hashSenha(s){
+  var buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode('renovar:'+s));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+function telasDoUsuario(u){
+  if(!u) return [];
+  if(u.funcao==='admin') return PERFIS.admin.telas;
+  if(u.telas && u.telas.length) return u.telas;
+  return (PERFIS[u.funcao]||PERFIS.obra).telas;
+}
+function podeVer(tela){
+  if(!usuarioAtual) return false;
+  if(tela==='proposta') tela='orcamentos';
+  return telasDoUsuario(usuarioAtual).indexOf(tela)>-1;
+}
+async function fazerLogin(){
+  var lg=g('loginUser').value.trim().toLowerCase();
+  var pw=g('loginPass').value;
+  var err=g('loginErro');
+  err.textContent='';
+  if(!lg||!pw){ err.textContent='Informe usuário e senha.'; return; }
+  var res=await supa.from('usuarios').select('*').eq('login',lg).limit(1);
+  if(res.error){ err.textContent='Erro de conexão. Tente novamente.'; return; }
+  var u=res.data&&res.data[0];
+  var h=await hashSenha(pw);
+  if(!u || u.senha_hash!==h){ err.textContent='Usuário ou senha incorretos.'; return; }
+  if(u.ativo===false){ err.textContent='Usuário desativado. Fale com a administração.'; return; }
+  usuarioAtual=u;
+  try{ localStorage.setItem('renovarSessao', JSON.stringify({id:u.id, ts:Date.now()})); }catch(e){}
+  var i=db.usuarios?db.usuarios.findIndex(function(x){return x.id===u.id;}):-1;
+  if(i>-1) db.usuarios[i]=u;
+  aplicarSessao();
+}
+function sair(){
+  try{ localStorage.removeItem('renovarSessao'); }catch(e){}
+  location.reload();
+}
+function aplicarSessao(){
+  var ov=g('loginOverlay'); if(ov) ov.style.display='none';
+  var chip=g('userChip');
+  if(chip){
+    chip.style.display='flex';
+    chip.innerHTML='<span>'+(PERFIS[usuarioAtual.funcao]||{label:usuarioAtual.funcao}).label.split(' ')[0]+' <b>'+usuarioAtual.nome.split(' ')[0]+'</b></span><button onclick="sair()">Sair</button>';
+  }
+  var bh=g('btnNovoGvtHeader'); if(bh) bh.style.display = podeVer('orcamentos')?'':'none';
+  document.querySelectorAll('.nav button').forEach(function(b){
+    var m=(b.getAttribute('onclick')||'').match(/showPage\('([^']+)'/);
+    if(m) b.style.display = podeVer(m[1])?'':'none';
+  });
+  var telas=telasDoUsuario(usuarioAtual);
+  var atual=document.querySelector('.page.active');
+  if(!atual || telas.indexOf(atual.id)===-1){
+    var primeira=telas[0]||'dash';
+    var btn=document.querySelector('.nav button[onclick*="\''+primeira+'\'"]');
+    showPage(primeira, btn);
+  }
+}
+function iniciarAuth(){
+  var sess=null;
+  try{ sess=JSON.parse(localStorage.getItem('renovarSessao')||'null'); }catch(e){}
+  var u=(sess&&db.usuarios)?db.usuarios.find(function(x){return x.id===sess.id;}):null;
+  if(u && u.ativo!==false){
+    usuarioAtual=u; aplicarSessao();
+    if(podeVer('orcamentos')) restaurarRascunhoGVT();
+  } else {
+    try{ localStorage.removeItem('renovarSessao'); }catch(e){}
+    var ov=g('loginOverlay'); if(ov) ov.style.display='flex';
+  }
+}
+
+// bloqueio de navegação por permissão + render sob demanda
+var _origShowPageAuth=showPage;
+showPage=function(id,btn){
+  if(usuarioAtual && !podeVer(id)){ alert('🔒 Você não tem acesso a esta tela.'); return; }
+  _origShowPageAuth(id,btn);
+  if(id==='progresso') renderProgresso();
+  if(id==='usuarios') renderUsuarios();
+};
+
+// ═══════════════════════════════════════════════════════
+// ABA USUÁRIOS (gestão de acessos)
+// ═══════════════════════════════════════════════════════
+var _uEditIdx=null;
+function renderUsuarios(){
+  var el=g('listaUsuarios'); if(!el) return;
+  var lista=db.usuarios||[];
+  if(!lista.length){ el.innerHTML='<div class="empty">Nenhum usuário cadastrado.</div>'; return; }
+  el.innerHTML='<div class="card" style="padding:0;overflow:auto"><table style="width:100%"><thead><tr>'+
+    '<th>Nome</th><th>Login</th><th>Perfil</th><th>Telas</th><th>Situação</th><th style="text-align:right">Ações</th></tr></thead><tbody>'+
+    lista.map(function(u,i){
+      var perfil=(PERFIS[u.funcao]||{label:u.funcao}).label;
+      var nTelas=u.funcao==='admin'?'todas':(telasDoUsuario(u).length+' telas');
+      return '<tr>'+
+        '<td style="font-weight:600">'+u.nome+'</td>'+
+        '<td><code>'+u.login+'</code></td>'+
+        '<td>'+perfil+'</td>'+
+        '<td>'+nTelas+'</td>'+
+        '<td>'+(u.ativo!==false?'<span class="badge bg">✅ Ativo</span>':'<span class="badge bo">🚫 Desativado</span>')+'</td>'+
+        '<td style="text-align:right;white-space:nowrap">'+
+          '<button class="btn sm" onclick="abrirModalUsuario('+i+')">✏️ Editar</button> '+
+          '<button class="btn sm w" onclick="redefinirSenha('+i+')">🔑 Redefinir senha</button>'+
+        '</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+function preencherTelasPerfil(){
+  var f=g('uFuncao').value;
+  var telas=(PERFIS[f]||PERFIS.obra).telas;
+  var box=g('uTelas');
+  box.innerHTML=TELAS_APP.map(function(t){
+    var ck=telas.indexOf(t.id)>-1?' checked':'';
+    var dis=f==='admin'?' disabled':'';
+    return '<label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" value="'+t.id+'"'+ck+dis+'> '+t.label+'</label>';
+  }).join('');
+}
+function abrirModalUsuario(idx){
+  _uEditIdx = idx===undefined?null:idx;
+  var u=_uEditIdx!==null?db.usuarios[_uEditIdx]:null;
+  g('tituloUsuario').textContent = u?'✏️ Editar usuário — '+u.nome:'🔐 Novo usuário';
+  g('uNome').value=u?u.nome:'';
+  g('uLogin').value=u?u.login:'';
+  g('uFuncao').value=u?u.funcao:'obra';
+  g('uSenha').value='';
+  g('uSenhaLabel').textContent = u?'Nova senha (deixe vazio p/ manter)':'Senha *';
+  g('uAtivo').value=u&&u.ativo===false?'false':'true';
+  preencherTelasPerfil();
+  if(u && u.funcao!=='admin' && u.telas && u.telas.length){
+    document.querySelectorAll('#uTelas input').forEach(function(c){ c.checked=u.telas.indexOf(c.value)>-1; });
+  }
+  abrirModal('modalUsuario');
+}
+async function salvarUsuario(){
+  var nome=g('uNome').value.trim();
+  var login=g('uLogin').value.trim().toLowerCase().replace(/\s+/g,'.');
+  if(!nome||!login){ alert('Informe nome e login.'); return; }
+  var senha=g('uSenha').value;
+  var isNew=_uEditIdx===null;
+  if(isNew && !senha){ alert('Defina uma senha inicial.'); return; }
+  var funcao=g('uFuncao').value;
+  var telas=[];
+  document.querySelectorAll('#uTelas input:checked').forEach(function(c){ telas.push(c.value); });
+  var atual=isNew?null:db.usuarios[_uEditIdx];
+  // proteção: não remover o último admin ativo
+  var adminsAtivos=(db.usuarios||[]).filter(function(x){return x.funcao==='admin'&&x.ativo!==false;});
+  if(atual && atual.funcao==='admin' && adminsAtivos.length<=1 && (funcao!=='admin'||g('uAtivo').value==='false')){
+    alert('⚠️ Este é o único admin ativo — não é possível rebaixar ou desativar.'); return;
+  }
+  var payload={nome:nome, login:login, funcao:funcao, telas:funcao==='admin'?[]:telas, ativo:g('uAtivo').value==='true'};
+  if(senha) payload.senha_hash=await hashSenha(senha);
+  var res;
+  if(atual){ res=await supa.from('usuarios').update(payload).eq('id',atual.id); }
+  else { res=await supa.from('usuarios').insert(payload); }
+  if(res.error){
+    alert(res.error.code==='23505'?'Já existe um usuário com esse login.':'Erro: '+res.error.message); return;
+  }
+  _uEditIdx=null;
+  await load(); closeModal(); renderUsuarios();
+  if(usuarioAtual){ var eu=db.usuarios.find(function(x){return x.id===usuarioAtual.id;}); if(eu){ usuarioAtual=eu; aplicarSessao(); } }
+}
+async function redefinirSenha(i){
+  var u=db.usuarios[i]; if(!u) return;
+  var nova=prompt('Nova senha para '+u.nome+' ('+u.login+'):');
+  if(!nova) return;
+  if(nova.length<4){ alert('Use pelo menos 4 caracteres.'); return; }
+  var res=await supa.from('usuarios').update({senha_hash:await hashSenha(nova)}).eq('id',u.id);
+  if(res.error){ alert('Erro: '+res.error.message); return; }
+  alert('✅ Senha de '+u.nome+' redefinida.');
+  await load(); renderUsuarios();
+}
+
+// ═══════════════════════════════════════════════════════
+// ACOMPANHAMENTO DE OBRA — etapas, previsto×realizado, RDO
+// ═══════════════════════════════════════════════════════
+var _etEditId=null;
+function etapasDaObra(){ return obraAtual?(db.etapas||[]).filter(function(e){return e.obra===obraAtual.id;}):[]; }
+function rdosDaObra(){ return obraAtual?(db.rdos||[]).filter(function(r){return r.obra===obraAtual.id;}):[]; }
+
+function renderProgresso(){
+  var el=g('progConteudo'); if(!el) return;
+  if(!obraAtual){ el.innerHTML='<div class="empty">🏗 Selecione uma obra no topo da página para acompanhar o progresso.</div>'; return; }
+  var etapas=etapasDaObra();
+  var hoje=new Date().toISOString().slice(0,10);
+  var pesoTot=etapas.reduce(function(a,e){return a+Number(e.peso||1);},0);
+  var progGeral=pesoTot>0?etapas.reduce(function(a,e){return a+Number(e.peso||1)*Number(e.progresso||0);},0)/pesoTot:0;
+  var atrasadas=etapas.filter(function(e){return e.fim_prev&&e.fim_prev<hoje&&Number(e.progresso||0)<100;});
+
+  var html='<div class="card" style="margin-bottom:10px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">'+
+    '<h3 style="margin:0">🏗 '+obraAtual.nome+'</h3>'+
+    '<div style="font-size:26px;font-weight:800;color:'+(progGeral>=100?'var(--suc)':'#0ea87e')+'">'+progGeral.toFixed(0)+'%</div></div>'+
+    '<div class="prog-big" style="margin-top:8px"><div style="width:'+Math.min(100,progGeral)+'%"></div></div>'+
+    '<div style="display:flex;gap:14px;margin-top:8px;font-size:12px;color:#64748b;flex-wrap:wrap">'+
+    '<span>'+etapas.filter(function(e){return Number(e.progresso||0)>=100;}).length+'/'+etapas.length+' etapas concluídas</span>'+
+    (obraAtual.fim?'<span>Prazo da obra: '+new Date(obraAtual.fim+'T00:00').toLocaleDateString('pt-BR')+'</span>':'')+
+    (atrasadas.length?'<span style="color:var(--dan);font-weight:700">⚠ '+atrasadas.length+' etapa(s) atrasada(s)</span>':'<span style="color:var(--suc)">✅ Sem atrasos</span>')+
+    '</div></div>';
+
+  if(!etapas.length){
+    html+='<div class="empty">Nenhuma etapa cadastrada.<br><small>Use <b>✨ Etapas padrão</b> para começar rápido ou <b>+ Nova etapa</b>.</small></div>';
+  } else {
+    html+='<div class="card" style="margin-bottom:10px"><h3>Etapas</h3>'+etapas.map(function(e){
+      var p=Number(e.progresso||0);
+      var atras=e.fim_prev&&e.fim_prev<hoje&&p<100;
+      var badge=p>=100?'<span class="badge bg">✅ Concluída</span>':atras?'<span class="badge" style="background:#fee2e2;color:#b91c1c">⚠ Atrasada</span>':p>0?'<span class="badge bo">🔨 Em andamento</span>':'<span class="badge bgy">⏸ Pendente</span>';
+      var prev=e.fim_prev?new Date(e.fim_prev+'T00:00').toLocaleDateString('pt-BR'):'—';
+      var real=e.fim_real?new Date(e.fim_real+'T00:00').toLocaleDateString('pt-BR'):(atras?'<b style="color:var(--dan)">'+Math.round((new Date(hoje)-new Date(e.fim_prev))/864e5)+'d de atraso</b>':'—');
+      return '<div class="etapa-row">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
+        '<div style="font-weight:700">'+e.nome+' <span style="font-weight:400;font-size:11px;color:#94a3b8">(peso '+(e.peso||1)+')</span></div>'+
+        '<div style="display:flex;gap:6px;align-items:center">'+badge+
+        '<button class="btn sm" onclick="abrirModalEtapa(\''+e.id+'\')">✏️</button>'+
+        '<button class="btn sm d" onclick="delEtapa(\''+e.id+'\')">✕</button></div></div>'+
+        '<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'+
+        '<input type="range" class="prog" min="0" max="100" step="5" value="'+p+'" onchange="atualizarProgressoEtapa(\''+e.id+'\',this.value)">'+
+        '<div style="min-width:44px;font-weight:800;text-align:right">'+p.toFixed(0)+'%</div></div>'+
+        '<div style="font-size:11px;color:#64748b;margin-top:4px">Término previsto: '+prev+' · Real: '+real+(e.obs?' · 📝 '+e.obs:'')+'</div>'+
+      '</div>';
+    }).join('')+'</div>';
+  }
+
+  var rdos=rdosDaObra().slice(0,15);
+  html+='<div class="card"><h3>📓 Diário de obra — últimos registros</h3>';
+  if(!rdos.length){ html+='<div class="empty" style="padding:16px">Nenhum RDO registrado ainda. Clique em <b>📓 Diário do dia</b> após cada dia de trabalho.</div>'; }
+  else html+=rdos.map(function(r){
+    var i=(db.rdos||[]).indexOf(r);
+    var fotos=(r.fotos||[]).map(function(f){return '<a href="'+f.url+'" target="_blank" rel="noopener"><img class="rdo-foto" src="'+f.url+'" loading="lazy"></a>';}).join(' ');
+    return '<div class="rdo-card">'+
+      '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">'+
+      '<div style="font-weight:700">'+new Date(r.data+'T00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})+' · '+(r.clima||'')+'</div>'+
+      '<div style="font-size:11px;color:#94a3b8">por '+(r.autor||'—')+(usuarioAtual&&usuarioAtual.funcao==='admin'?' <button class="btn sm d" onclick="delRDO(\''+r.id+'\')">✕</button>':'')+'</div></div>'+
+      ((r.equipe&&r.equipe.length)?'<div style="font-size:12px;color:#475569;margin-top:4px">👷 '+r.equipe.join(', ')+'</div>':'')+
+      '<div style="font-size:13px;margin-top:6px">'+(r.servicos||'').replace(/\n/g,'<br>')+'</div>'+
+      (r.ocorrencias?'<div style="font-size:12px;margin-top:6px;background:#fef3c7;border-radius:6px;padding:6px 8px">⚠️ '+r.ocorrencias.replace(/\n/g,'<br>')+'</div>':'')+
+      (fotos?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+fotos+'</div>':'')+
+    '</div>';
+  }).join('');
+  html+='</div>';
+  el.innerHTML=html;
+}
+var ETAPAS_PADRAO=['Demolição / Preparação','Instalações elétricas','Instalações hidráulicas','Drywall / Forro','Pintura','Piso / Revestimento','Acabamento / Instalação final','Limpeza e entrega'];
+async function criarEtapasPadrao(){
+  if(!obraAtual){ alert('Selecione uma obra primeiro.'); return; }
+  if(etapasDaObra().length && !confirm('Esta obra já tem etapas. Adicionar as etapas padrão mesmo assim?')) return;
+  if(!etapasDaObra().length && !confirm('Criar '+ETAPAS_PADRAO.length+' etapas padrão para "'+obraAtual.nome+'"?')) return;
+  var rows=ETAPAS_PADRAO.map(function(n,i){ return {obra:obraAtual.id, nome:n, peso:3, progresso:0, ordem:i}; });
+  var res=await supa.from('etapas_obra').insert(rows);
+  if(res.error){ alert('Erro: '+res.error.message); return; }
+  await load(); renderProgresso();
+}
+function abrirModalEtapa(id){
+  if(!obraAtual){ alert('Selecione uma obra primeiro.'); return; }
+  _etEditId = id||null;
+  var e=_etEditId?(db.etapas||[]).find(function(x){return x.id===_etEditId;}):null;
+  g('tituloEtapa').textContent=e?'✏️ Editar etapa':'🧱 Nova etapa';
+  g('etNome').value=e?e.nome:''; g('etPeso').value=e?String(e.peso||3):'3';
+  g('etProg').value=e?Number(e.progresso||0):0;
+  g('etIniPrev').value=e&&e.inicio_prev?e.inicio_prev:''; g('etFimPrev').value=e&&e.fim_prev?e.fim_prev:'';
+  g('etIniReal').value=e&&e.inicio_real?e.inicio_real:''; g('etFimReal').value=e&&e.fim_real?e.fim_real:'';
+  g('etObs').value=e&&e.obs?e.obs:'';
+  abrirModal('modalEtapa');
+}
+async function salvarEtapa(){
+  var nome=g('etNome').value.trim();
+  if(!nome){ alert('Informe o nome da etapa.'); return; }
+  var payload={obra:obraAtual.id, nome:nome, peso:Number(g('etPeso').value)||3,
+    progresso:Math.max(0,Math.min(100,Number(g('etProg').value)||0)),
+    inicio_prev:g('etIniPrev').value||null, fim_prev:g('etFimPrev').value||null,
+    inicio_real:g('etIniReal').value||null, fim_real:g('etFimReal').value||null,
+    obs:g('etObs').value};
+  var res;
+  if(_etEditId){ res=await supa.from('etapas_obra').update(payload).eq('id',_etEditId); }
+  else { payload.ordem=etapasDaObra().length; res=await supa.from('etapas_obra').insert(payload); }
+  if(res.error){ alert('Erro: '+res.error.message); return; }
+  _etEditId=null;
+  await load(); closeModal(); renderProgresso();
+}
+async function atualizarProgressoEtapa(id,val){
+  var e=(db.etapas||[]).find(function(x){return x.id===id;}); if(!e) return;
+  var hoje=new Date().toISOString().slice(0,10);
+  var p=Math.max(0,Math.min(100,Number(val)||0));
+  var payload={progresso:p};
+  if(p>0 && !e.inicio_real) payload.inicio_real=hoje;
+  if(p>=100 && !e.fim_real) payload.fim_real=hoje;
+  if(p<100) payload.fim_real=null;
+  var res=await supa.from('etapas_obra').update(payload).eq('id',id);
+  if(res.error){ alert('Erro: '+res.error.message); return; }
+  Object.assign(e,payload);
+  renderProgresso();
+}
+async function delEtapa(id){
+  if(!confirm('Excluir esta etapa?')) return;
+  await supa.from('etapas_obra').delete().eq('id',id);
+  await load(); renderProgresso();
+}
+function abrirModalRDO(){
+  if(!obraAtual){ alert('Selecione uma obra primeiro.'); return; }
+  g('rdoData').value=new Date().toISOString().slice(0,10);
+  g('rdoClima').value='☀️ Sol';
+  g('rdoServicos').value=''; g('rdoOcorrencias').value='';
+  g('rdoFotos').value=''; g('rdoUploadStatus').textContent='';
+  var box=g('rdoEquipe');
+  var cols=db.colaboradores||[];
+  box.innerHTML=cols.length?cols.map(function(c){
+    return '<label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" value="'+(c.nome||'')+'"> '+(c.apelido||c.nome||'')+'</label>';
+  }).join(''):'<span style="color:#94a3b8">Nenhum colaborador cadastrado — informe nos serviços.</span>';
+  abrirModal('modalRDO');
+}
+async function salvarRDO(){
+  var data=g('rdoData').value;
+  var serv=g('rdoServicos').value.trim();
+  if(!data){ alert('Informe a data.'); return; }
+  if(!serv){ alert('Descreva os serviços executados.'); return; }
+  var equipe=[];
+  document.querySelectorAll('#rdoEquipe input:checked').forEach(function(c){ equipe.push(c.value); });
+  var st=g('rdoUploadStatus');
+  var fotos=[];
+  var inp=g('rdoFotos');
+  try{
+    if(inp&&inp.files&&inp.files.length){
+      for(var i=0;i<inp.files.length;i++){
+        var f=inp.files[i];
+        if(f.size>10*1024*1024){ alert('A foto "'+f.name+'" excede 10 MB e será ignorada.'); continue; }
+        if(st) st.textContent='⏳ Enviando foto '+(i+1)+' de '+inp.files.length+'...';
+        var ext=(f.name.indexOf('.')>-1?f.name.split('.').pop():'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+        var path='rdo/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+        var up=await supa.storage.from('documentos').upload(path,f,{contentType:f.type||'image/jpeg'});
+        if(up.error){ alert('Erro ao enviar foto: '+up.error.message); if(st)st.textContent=''; return; }
+        var pub=supa.storage.from('documentos').getPublicUrl(path);
+        fotos.push({nome:f.name,url:pub.data.publicUrl,path:path});
+      }
+    }
+  }catch(e){ if(st)st.textContent=''; return; }
+  if(st) st.textContent='';
+  var res=await supa.from('rdo').insert({obra:obraAtual.id, data:data, clima:g('rdoClima').value,
+    equipe:equipe, servicos:serv, ocorrencias:g('rdoOcorrencias').value, fotos:fotos,
+    autor:usuarioAtual?usuarioAtual.nome:''});
+  if(res.error){ alert('Erro: '+res.error.message); return; }
+  await load(); closeModal(); renderProgresso();
+}
+async function delRDO(id){
+  if(!confirm('Excluir este registro do diário?')) return;
+  var r=(db.rdos||[]).find(function(x){return x.id===id;});
+  if(r&&r.fotos&&r.fotos.length){
+    try{ await supa.storage.from('documentos').remove(r.fotos.map(function(f){return f.path;})); }catch(e){}
+  }
+  await supa.from('rdo').delete().eq('id',id);
+  await load(); renderProgresso();
+}
+// re-render do progresso quando troca a obra
+var _origRenderAuth=render;
+render=function(){
+  _origRenderAuth();
+  var pg=document.getElementById('progresso');
+  if(pg&&pg.classList.contains('active')) renderProgresso();
+};
+
 // ═══════════════════════════════════════════════════════
 // RASCUNHO AUTOMÁTICO DO GVT — protege contra perda de dados
 // ao trocar de aba/app ou se o navegador recarregar a página
@@ -2958,7 +3510,12 @@ abrirModalGVT = function(idx){
   var bf=g('gvtBtnFechar'); if(bf)bf.textContent = (idx!==undefined&&idx!==null)?'Fechar':'Cancelar';
 };
 
-load().then(function(){ render(); restaurarRascunhoGVT(); });
+// esconde o login otimisticamente se já existe sessão salva (valida após carregar)
+(function(){
+  var s=null; try{ s=localStorage.getItem('renovarSessao'); }catch(e){}
+  if(s){ var ov=document.getElementById('loginOverlay'); if(ov) ov.style.display='none'; }
+})();
+load().then(function(){ render(); iniciarAuth(); });
 </script>
 </body>
 </html>
