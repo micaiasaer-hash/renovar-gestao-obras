@@ -3062,6 +3062,7 @@ var PERFIS={
   comercial:{label:'📋 Comercial',telas:['dash','orcamentos','clientes','tabela']}
 };
 var usuarioAtual=null;
+function hojeLocal(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 async function hashSenha(s){
   var buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode('renovar:'+s));
@@ -3243,7 +3244,7 @@ function renderProgresso(){
   var el=g('progConteudo'); if(!el) return;
   if(!obraAtual){ el.innerHTML='<div class="empty">🏗 Selecione uma obra no topo da página para acompanhar o progresso.</div>'; return; }
   var etapas=etapasDaObra();
-  var hoje=new Date().toISOString().slice(0,10);
+  var hoje=hojeLocal();
   var pesoTot=etapas.reduce(function(a,e){return a+Number(e.peso||1);},0);
   var progGeral=pesoTot>0?etapas.reduce(function(a,e){return a+Number(e.peso||1)*Number(e.progresso||0);},0)/pesoTot:0;
   var atrasadas=etapas.filter(function(e){return e.fim_prev&&e.fim_prev<hoje&&Number(e.progresso||0)<100;});
@@ -3340,7 +3341,7 @@ async function salvarEtapa(){
 }
 async function atualizarProgressoEtapa(id,val){
   var e=(db.etapas||[]).find(function(x){return x.id===id;}); if(!e) return;
-  var hoje=new Date().toISOString().slice(0,10);
+  var hoje=hojeLocal();
   var p=Math.max(0,Math.min(100,Number(val)||0));
   var payload={progresso:p};
   if(p>0 && !e.inicio_real) payload.inicio_real=hoje;
@@ -3358,7 +3359,7 @@ async function delEtapa(id){
 }
 function abrirModalRDO(){
   if(!obraAtual){ alert('Selecione uma obra primeiro.'); return; }
-  g('rdoData').value=new Date().toISOString().slice(0,10);
+  g('rdoData').value=hojeLocal();
   g('rdoClima').value='☀️ Sol';
   g('rdoServicos').value=''; g('rdoOcorrencias').value='';
   g('rdoFotos').value=''; g('rdoUploadStatus').textContent='';
