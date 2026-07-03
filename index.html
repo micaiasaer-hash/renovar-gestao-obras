@@ -115,6 +115,8 @@ tr:hover td{background:#f8f9fa}
 #loginArt .tagline{color:#9aa3b2;font-size:13px;letter-spacing:3px;text-transform:uppercase}
 #loginArt .frase{color:#e2e8f0;font-size:20px;font-weight:600;max-width:420px;text-align:center;line-height:1.45;z-index:1}
 #loginFotoBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+#loginArt.tem-foto svg,#loginArt.tem-foto>div{display:none}
+#loginArt.tem-foto::before{display:none}
 #loginBox{flex:1;display:flex;align-items:center;justify-content:center;background:#fff}
 #loginBox form{width:min(88%,360px)}
 #loginBox label{display:block;font-size:12px;font-weight:600;color:#475569;margin:14px 0 4px}
@@ -144,7 +146,7 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
 <!-- TELA DE LOGIN -->
 <div id="loginOverlay">
   <div id="loginArt">
-    <img id="loginFotoBg" alt="">
+    <img id="loginFotoBg" alt="RENOVAR" src="https://mintakzqspsfctbrnshh.supabase.co/storage/v1/object/public/documentos/branding/login-logo.jpg" onload="this.style.display='block';this.parentElement.classList.add('tem-foto')">
     <svg width="120" height="120" viewBox="0 0 60 60" fill="none" style="z-index:1">
       <circle cx="30" cy="30" r="30" fill="white"/>
       <path d="M15 42 L22 22 L29 34 L34 26 L41 42Z" fill="#1a1a1a" opacity=".85"/>
