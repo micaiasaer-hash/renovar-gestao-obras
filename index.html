@@ -2680,6 +2680,7 @@ salvarObra = async function() {
   var orc = ed._orcData || null;
   var payload = {
     nome:nome, cliente:g('oCliente').value, endereco:g('oEnd').value,
+    responsavel:g('oResp2')?g('oResp2').value:'',
     tipo: orc ? orc.tipo : 'Reforma',
     valor:Number(g('oValor').value)||0,
     prev_mat:orc&&orc.servicos?orc.servicos.reduce(function(a,s){return a+s.total*0.4;},0):0,
