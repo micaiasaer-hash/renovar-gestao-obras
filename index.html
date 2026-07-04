@@ -2452,6 +2452,11 @@ function renderDash(){
   if(c.prevMO>0&&c.mos>c.prevMO)al.push({cl:'r',msg:'⚠️ Mão de obra ultrapassou o previsto em '+fmt(c.mos-c.prevMO)+'!'});
   if(c.prevCusto>0&&c.custo>c.prevCusto)al.push({cl:'r',msg:'⚠️ Custo real ultrapassou o previsto!'});
   if(c.margem>=20)al.push({cl:'g',msg:'✅ Margem saudável.'});
+  // alertas do almoxarifado
+  var _abaixoMin=(db.almoxItens||[]).filter(function(i){return i.ativo!==false&&Number(i.qtd_minima)>0&&Number(i.qtd_estoque)<=Number(i.qtd_minima);});
+  if(_abaixoMin.length)al.push({cl:'y',msg:'🏭 Estoque no mínimo: '+_abaixoMin.map(function(i){return i.nome+' ('+Number(i.qtd_estoque)+' '+(i.unidade||'un')+')';}).slice(0,4).join(', ')+(_abaixoMin.length>4?' e mais '+(_abaixoMin.length-4):'')+'.'});
+  var _atras=(typeof cautelasAbertas==='function'?cautelasAbertas():[]).filter(function(m){return m.prev_devolucao&&m.prev_devolucao<hojeISO();});
+  if(_atras.length)al.push({cl:'r',msg:'🔧 '+_atras.length+' cautela(s) com devolução atrasada: '+_atras.map(function(m){return nomeItemAlmox(m.item_id)+' ('+(m.colaborador_nome||'—')+')';}).slice(0,3).join(', ')+(_atras.length>3?'…':'')});
   g('alertas').innerHTML=al.map(function(a){return '<div class="al '+a.cl+'">'+a.msg+'</div>';}).join('');
   g('resumoObra').innerHTML=buildLucro(c);
   var steps=[{l:'📋 GVT/Orçamento',d:!!obraAtual.orcId},{l:'📄 Proposta',d:!!obraAtual.orcId},{l:'✅ Aprovado',d:true},{l:'🏗 Obra ativa',d:true},{l:'💰 Custos lançados',d:db.materiais.filter(function(x){return x.obra===obraAtual.id;}).length>0},{l:'🏁 Finalizado',d:obraAtual.finalizada||obraAtual.status==='Finalizada'}];
@@ -3268,7 +3273,7 @@ function renderEstoque(){
           '<td>'+(m.obra_nome||'—')+'</td>'+
           '<td style="color:'+(atrasada?'#dc2626':'#1a1a1a')+'">'+(m.prev_devolucao||'—')+(atrasada?' ⚠️':'')+'</td>'+
           '<td><span class="badge '+(m.status==='parcial'?'bo':'bdk')+'">'+(m.status==='parcial'?'Parcial':'Aberta')+'</span></td>'+
-          '<td style="white-space:nowrap"><button class="btn sm s" onclick="abrirModalDevolucao(\''+m.id+'\')">↩️ Devolver</button></td></tr>';
+          '<td style="white-space:nowrap"><button class="btn sm s" onclick="abrirModalDevolucao(\''+m.id+'\')">↩️ Devolver</button> <button class="btn sm" onclick="imprimirCautela(\''+m.id+'\')" title="Imprimir termo de cautela">🖨</button></td></tr>';
       }).join('')+'</tbody></table>';
   }
 
@@ -3280,11 +3285,12 @@ function renderEstoque(){
   if(!hist.length){g('listaAlmoxMovs').innerHTML='<div class="empty">📜 Nenhuma movimentação.</div>';}
   else{
     var tipoLabel={entrada:'📥 Entrada',cautela:'📤 Cautela',baixa:'📉 Baixa',devolucao:'↩️ Devolução'};
-    g('listaAlmoxMovs').innerHTML='<table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Qtd</th><th>Colaborador</th><th>Obra</th><th>Obs</th></tr></thead><tbody>'+
+    g('listaAlmoxMovs').innerHTML='<table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Qtd</th><th>Colaborador</th><th>Obra</th><th>Obs</th><th></th></tr></thead><tbody>'+
       hist.map(function(m){
         return '<tr><td>'+(m.data||'')+'</td><td>'+(tipoLabel[m.tipo]||m.tipo)+'</td>'+
           '<td style="font-weight:600">'+nomeItemAlmox(m.item_id)+'</td><td>'+Number(m.qtd)+'</td>'+
-          '<td>'+(m.colaborador_nome||'—')+'</td><td>'+(m.obra_nome||'—')+'</td><td style="font-size:12px;color:#64748b">'+(m.obs||'')+'</td></tr>';
+          '<td>'+(m.colaborador_nome||'—')+'</td><td>'+(m.obra_nome||'—')+'</td><td style="font-size:12px;color:#64748b">'+(m.obs||'')+'</td>'+
+          '<td>'+(m.tipo==='cautela'?'<button class="btn sm" onclick="imprimirCautela(\''+m.id+'\')" title="Imprimir termo de cautela">🖨</button>':'')+'</td></tr>';
       }).join('')+'</tbody></table>';
   }
 }
@@ -3440,6 +3446,50 @@ async function salvarCautelaAlmox(){
   if(ru.error){alert('Erro ao atualizar saldo: '+ru.error.message);return;}
   it.qtd_estoque=novoSaldo;db.almoxMovs.unshift(rm.data);
   closeModal();renderEstoque();
+}
+
+// ── COMPROVANTE DE CAUTELA ──
+function imprimirCautela(movId){
+  var m=(db.almoxMovs||[]).find(function(x){return x.id===movId;});
+  if(!m){alert('Cautela não encontrada.');return;}
+  var it=itemAlmox(m.item_id)||{};
+  var pend=Number(m.qtd)-Number(m.qtd_devolvida||0);
+  var num=(m.id||'').replace(/-/g,'').substring(0,8).toUpperCase();
+  function dbr(d){ if(!d)return '—'; var p=d.split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):d; }
+  var st=m.status==='devolvida'?'DEVOLVIDA':(m.status==='parcial'?'DEVOLUÇÃO PARCIAL ('+Number(m.qtd_devolvida)+' de '+Number(m.qtd)+')':'EM ABERTO');
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Termo de Cautela '+num+'</title>'+
+    '<style>body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;max-width:700px;margin:24px auto;padding:0 16px;font-size:13px}'+
+    'h1{font-size:16px;letter-spacing:1px;margin:0}h2{font-size:13px;font-weight:400;color:#555;margin:2px 0 0}'+
+    '.top{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1a1a1a;padding-bottom:10px;margin-bottom:16px}'+
+    '.num{text-align:right;font-size:12px;color:#555}.num b{font-size:14px;color:#1a1a1a}'+
+    'table{width:100%;border-collapse:collapse;margin:10px 0}td,th{border:1px solid #999;padding:7px 9px;text-align:left;font-size:12.5px}'+
+    'th{background:#f0f0f0;width:32%;font-weight:700}'+
+    '.decl{margin:18px 0;padding:12px;border:1px solid #ccc;background:#fafafa;font-size:12px;line-height:1.5}'+
+    '.ass{display:flex;gap:40px;margin-top:56px}.ass div{flex:1;text-align:center;font-size:12px}'+
+    '.ass .ln{border-top:1px solid #1a1a1a;padding-top:6px}'+
+    '.st{display:inline-block;padding:3px 10px;border:2px solid #1a1a1a;border-radius:4px;font-weight:700;font-size:11px;letter-spacing:1px}'+
+    '@media print{body{margin:8px auto}}</style></head><body>'+
+    '<div class="top"><div><h1>RENOVAR — REFORMAS E CONSTRUÇÕES</h1><h2>Almoxarifado · Termo de Cautela de Material / Ferramenta</h2></div>'+
+    '<div class="num">Nº <b>'+num+'</b><br>Emitido em '+new Date().toLocaleDateString('pt-BR')+'</div></div>'+
+    '<span class="st">'+st+'</span>'+
+    '<table>'+
+    '<tr><th>Item</th><td>'+(it.codigo?'['+it.codigo+'] ':'')+(it.nome||'—')+'</td></tr>'+
+    '<tr><th>Quantidade</th><td>'+Number(m.qtd)+' '+(it.unidade||'un')+(m.status!=='aberta'&&pend>0?' (pendente: '+pend+')':'')+'</td></tr>'+
+    '<tr><th>Colaborador</th><td>'+(m.colaborador_nome||'—')+(m.colaborador_funcao?' — '+m.colaborador_funcao:'')+'</td></tr>'+
+    '<tr><th>Obra / Destino</th><td>'+(m.obra_nome||'Sem obra específica')+'</td></tr>'+
+    '<tr><th>Data da retirada</th><td>'+dbr(m.data)+'</td></tr>'+
+    '<tr><th>Devolução prevista</th><td>'+dbr(m.prev_devolucao)+'</td></tr>'+
+    (m.devolucao_data?'<tr><th>Devolução realizada</th><td>'+dbr(m.devolucao_data)+'</td></tr>':'')+
+    (m.obs?'<tr><th>Observações</th><td>'+m.obs+'</td></tr>':'')+
+    '<tr><th>Registrado por</th><td>'+(m.usuario||'—')+'</td></tr>'+
+    '</table>'+
+    '<div class="decl">Declaro ter recebido o item acima descrito em perfeitas condições de uso, comprometendo-me a utilizá-lo exclusivamente nas atividades da obra indicada e a devolvê-lo ao almoxarifado na data prevista, nas mesmas condições em que o recebi, responsabilizando-me por perda, extravio ou dano decorrente de mau uso.</div>'+
+    '<div class="ass"><div><div class="ln">'+(m.colaborador_nome||'Colaborador')+'<br>Retirou o material</div></div>'+
+    '<div><div class="ln">'+(m.usuario||'Responsável pelo almoxarifado')+'<br>Entregou o material</div></div></div>'+
+    '<script>window.onload=function(){window.print();};<\/script></body></html>';
+  var w=window.open('','_blank','width=760,height=900');
+  if(!w){alert('Habilite pop-ups para imprimir o comprovante.');return;}
+  w.document.write(html);w.document.close();
 }
 
 // ── DEVOLUÇÃO ──
