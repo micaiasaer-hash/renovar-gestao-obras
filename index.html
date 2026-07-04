@@ -193,6 +193,7 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   <button onclick="showPage('orcamentos',this)">📋 GVT / Orçamentos</button>
   <button onclick="showPage('obras',this)">🏗 Obras ativas</button>
   <button onclick="showPage('materiais',this)">📦 Materiais</button>
+  <button onclick="showPage('estoque',this)">🏭 Estoque</button>
   <button onclick="showPage('maoObra',this)">👷 Mão de obra</button>
   <button onclick="showPage('indiretos',this)">🧾 Indiretos</button>
   <button onclick="showPage('fluxo',this)">💳 Fluxo de caixa</button>
@@ -258,6 +259,56 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   </div>
   <div class="card" style="padding:0;overflow:hidden"><div id="listaMat"></div></div>
   <div id="totalMat" style="text-align:right;font-size:14px;font-weight:600;margin-top:8px"></div>
+</div>
+
+<!-- ESTOQUE / ALMOXARIFADO -->
+<div id="estoque" class="page">
+  <div class="sh">
+    <h2 style="font-size:16px;font-weight:700">🏭 Estoque — Almoxarifado</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn" onclick="abrirModalEntradaAlmox()">📥 Entrada</button>
+      <button class="btn" onclick="abrirModalItemAlmox()">+ Cadastrar item</button>
+      <button class="btn p" onclick="abrirModalCautelaAlmox()">📤 Nova cautela / saída</button>
+    </div>
+  </div>
+  <div id="cardsAlmox" class="g2" style="margin-bottom:12px"></div>
+  <div class="frow" style="margin-bottom:10px">
+    <button class="tab-btn active" id="tabAlmoxItens" onclick="trocarTabAlmox('itens',this)">📋 Itens em estoque</button>
+    <button class="tab-btn" id="tabAlmoxCautelas" onclick="trocarTabAlmox('cautelas',this)">🔄 Cautelas abertas</button>
+    <button class="tab-btn" id="tabAlmoxHist" onclick="trocarTabAlmox('hist',this)">📜 Histórico</button>
+  </div>
+  <div id="almoxItensBox">
+    <div class="frow">
+      <input type="text" id="filtAlmoxNome" placeholder="Buscar item..." oninput="renderEstoque()" style="width:180px">
+      <select id="filtAlmoxCateg" onchange="renderEstoque()">
+        <option value="">Todas categorias</option>
+        <option>Ferramentas</option><option>Elétrica</option><option>Hidráulica</option><option>Pintura</option>
+        <option>Gesso/Drywall</option><option>Piso</option><option>EPI</option><option>Fixação</option><option>Outros</option>
+      </select>
+      <select id="filtAlmoxTipo" onchange="renderEstoque()">
+        <option value="">Todos os tipos</option>
+        <option value="consumivel">Consumível</option>
+        <option value="ferramenta">Ferramenta / Equipamento</option>
+      </select>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden"><div id="listaAlmoxItens"></div></div>
+  </div>
+  <div id="almoxCautelasBox" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden"><div id="listaAlmoxCautelas"></div></div>
+  </div>
+  <div id="almoxHistBox" style="display:none">
+    <div class="frow">
+      <select id="filtAlmoxMovTipo" onchange="renderEstoque()">
+        <option value="">Todas as movimentações</option>
+        <option value="entrada">📥 Entradas</option>
+        <option value="cautela">📤 Cautelas</option>
+        <option value="baixa">📉 Baixas (consumo)</option>
+        <option value="devolucao">↩️ Devoluções</option>
+      </select>
+      <input type="month" id="filtAlmoxMovPer" oninput="renderEstoque()">
+    </div>
+    <div class="card" style="padding:0;overflow:hidden"><div id="listaAlmoxMovs"></div></div>
+  </div>
 </div>
 
 <!-- MÃO DE OBRA -->
@@ -651,6 +702,97 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Descrição *</label><input id="mDesc"></div></div>
   <div class="fr"><div class="fg"><label>Qtd</label><input type="number" id="mQtd" value="1" oninput="calcTot()"></div><div class="fg"><label>Valor unit. (R$)</label><input type="number" id="mVunit" oninput="calcTot()"></div><div class="fg"><label>Total (R$)</label><input type="number" id="mVtot" readonly style="background:#f8f9fa"></div></div>
   <div class="mf2"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn p" onclick="salvarMat()">Salvar</button></div>
+</div>
+
+<!-- MODAIS ALMOXARIFADO -->
+<div class="modal" id="modalItemAlmox">
+  <h3 id="tituloItemAlmox">🏭 Cadastrar item no almoxarifado</h3>
+  <div class="fr">
+    <div class="fg"><label>Código / Patrimônio</label><input id="aiCodigo" placeholder="Ex: FER-001"></div>
+    <div class="fg" style="grid-column:span 2"><label>Nome do item *</label><input id="aiNome" placeholder="Ex: Furadeira de impacto Bosch"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Categoria</label>
+      <select id="aiCateg"><option>Ferramentas</option><option>Elétrica</option><option>Hidráulica</option><option>Pintura</option><option>Gesso/Drywall</option><option>Piso</option><option>EPI</option><option>Fixação</option><option>Outros</option></select>
+    </div>
+    <div class="fg"><label>Tipo *</label>
+      <select id="aiTipo">
+        <option value="consumivel">Consumível (baixa definitiva)</option>
+        <option value="ferramenta">Ferramenta / Equipamento (com devolução)</option>
+      </select>
+    </div>
+    <div class="fg"><label>Unidade</label>
+      <select id="aiUnid"><option>un</option><option>m</option><option>m²</option><option>kg</option><option>L</option><option>cx</option><option>pct</option><option>sc</option><option>par</option></select>
+    </div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Qtd. inicial em estoque</label><input type="number" id="aiQtd" value="0" min="0"></div>
+    <div class="fg"><label>Estoque mínimo (alerta)</label><input type="number" id="aiQtdMin" value="0" min="0"></div>
+    <div class="fg"><label>Valor unit. (R$)</label><input type="number" id="aiValor" placeholder="0,00"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Localização</label><input id="aiLocal" placeholder="Ex: Prateleira B2"></div>
+    <div class="fg" style="grid-column:span 2"><label>Observações</label><input id="aiObs"></div>
+  </div>
+  <div class="mf2"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn p" onclick="salvarItemAlmox()">Salvar</button></div>
+</div>
+
+<div class="modal" id="modalEntradaAlmox">
+  <h3>📥 Entrada de estoque</h3>
+  <div class="fr">
+    <div class="fg" style="grid-column:1/-1"><label>Item *</label><select id="aeItem"></select></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Quantidade *</label><input type="number" id="aeQtd" min="0.01"></div>
+    <div class="fg"><label>Data</label><input type="date" id="aeData"></div>
+  </div>
+  <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Observação (NF, fornecedor...)</label><input id="aeObs"></div></div>
+  <div class="mf2"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn p" onclick="salvarEntradaAlmox()">✅ Registrar entrada</button></div>
+</div>
+
+<div class="modal" id="modalCautelaAlmox" style="width:min(96vw,620px)">
+  <h3>📤 Cautela / Saída de material</h3>
+  <div style="background:#f1f5f9;border-radius:8px;padding:12px;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;color:#1a1a1a;letter-spacing:1px;margin-bottom:8px">MATERIAL</div>
+    <div class="fr">
+      <div class="fg" style="grid-column:span 2"><label>Item *</label><select id="acItem" onchange="atualizarInfoItemCautela()"></select></div>
+      <div class="fg"><label>Quantidade *</label><input type="number" id="acQtd" min="0.01" oninput="atualizarInfoItemCautela()"></div>
+    </div>
+    <div id="acInfoItem" style="font-size:12px;color:#64748b"></div>
+  </div>
+  <div style="background:#f1f5f9;border-radius:8px;padding:12px;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;color:#1a1a1a;letter-spacing:1px;margin-bottom:8px">QUEM RETIRA</div>
+    <div class="fr">
+      <div class="fg" style="grid-column:span 2">
+        <label>Colaborador *</label>
+        <select id="acColab" onchange="preencherColabCautela()"></select>
+        <input id="acColabNome" placeholder="Ou digitar nome manualmente" style="margin-top:6px;font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px;width:100%">
+      </div>
+      <div class="fg"><label>Função</label><input id="acColabFunc" placeholder="Ex: Eletricista"></div>
+    </div>
+  </div>
+  <div style="background:#f1f5f9;border-radius:8px;padding:12px;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;color:#1a1a1a;letter-spacing:1px;margin-bottom:8px">DESTINO E PRAZO</div>
+    <div class="fr">
+      <div class="fg"><label>Obra destino</label><select id="acObra"></select></div>
+      <div class="fg"><label>Data da retirada</label><input type="date" id="acData"></div>
+      <div class="fg" id="acPrevBox"><label>Devolução prevista</label><input type="date" id="acPrev"></div>
+    </div>
+    <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Observações</label><input id="acObs"></div></div>
+  </div>
+  <div id="acAvisoTipo" style="font-size:12px;color:#64748b;margin-bottom:8px"></div>
+  <div class="mf2"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn p" onclick="salvarCautelaAlmox()">✅ Registrar saída</button></div>
+</div>
+
+<div class="modal" id="modalDevolucaoAlmox">
+  <h3>↩️ Registrar devolução</h3>
+  <div id="devInfo" style="background:#f1f5f9;border-radius:8px;padding:12px;margin-bottom:10px;font-size:13px"></div>
+  <div class="fr">
+    <div class="fg"><label>Qtd. devolvida *</label><input type="number" id="adQtd" min="0.01"></div>
+    <div class="fg"><label>Data</label><input type="date" id="adData"></div>
+  </div>
+  <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Observação (estado do item, avarias...)</label><input id="adObs"></div></div>
+  <div class="mf2"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn s" onclick="salvarDevolucaoAlmox()">✅ Confirmar devolução</button></div>
 </div>
 
 <div class="modal" id="modalMO">
@@ -1169,7 +1311,7 @@ var PRECOS=[
 ];
 
 var KEY='gestaoObrasV7';
-var db={orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[]};
+var db={orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],almoxItens:[],almoxMovs:[]};
 var obraAtual=null;
 var ed={gvt:null,mat:null,mo:null,ind:null};
 var pchart=null,pvchart=null;
@@ -1254,11 +1396,15 @@ async function load(){
     var extra = await Promise.all([
       supa.from('usuarios').select('*').order('nome'),
       supa.from('etapas_obra').select('*').order('ordem'),
-      supa.from('rdo').select('*').order('data',{ascending:false})
+      supa.from('rdo').select('*').order('data',{ascending:false}),
+      supa.from('almox_itens').select('*').order('nome'),
+      supa.from('almox_movs').select('*').order('created_at',{ascending:false})
     ]);
     db.usuarios = extra[0].data||[];
     db.etapas   = extra[1].data||[];
     db.rdos     = extra[2].data||[];
+    db.almoxItens = extra[3].data||[];
+    db.almoxMovs  = extra[4].data||[];
     if(db.obras.length) obraAtual=db.obras[0];
   } catch(e){ console.error('Erro ao carregar:', e); }
 }
@@ -2499,6 +2645,7 @@ function render(){
   renderClientes();renderColaboradores();
   renderDuplicatas();renderAlertasDup();
   popularSelectColab();popularSelectCliente();
+  renderEstoque();
 }
 
 // ── CRUD OBRA ─────────────────────────────────────────────────
@@ -3046,12 +3193,304 @@ finalizarObra = async function() {
 
 
 // ═══════════════════════════════════════════════════════
+// ESTOQUE / ALMOXARIFADO
+// ═══════════════════════════════════════════════════════
+var _almoxTab='itens';
+var _almoxEditId=null;
+var _almoxDevMov=null;
+
+function hojeISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function trocarTabAlmox(tab,btn){
+  _almoxTab=tab;
+  ['tabAlmoxItens','tabAlmoxCautelas','tabAlmoxHist'].forEach(function(id){var b=g(id);if(b)b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  g('almoxItensBox').style.display=tab==='itens'?'block':'none';
+  g('almoxCautelasBox').style.display=tab==='cautelas'?'block':'none';
+  g('almoxHistBox').style.display=tab==='hist'?'block':'none';
+  renderEstoque();
+}
+
+function cautelasAbertas(){
+  return (db.almoxMovs||[]).filter(function(m){return m.tipo==='cautela'&&(m.status==='aberta'||m.status==='parcial');});
+}
+function nomeItemAlmox(id){
+  var it=(db.almoxItens||[]).find(function(i){return i.id===id;});
+  return it?it.nome:'—';
+}
+function itemAlmox(id){return (db.almoxItens||[]).find(function(i){return i.id===id;});}
+
+function renderEstoque(){
+  if(!g('cardsAlmox'))return;
+  var itens=db.almoxItens||[], movs=db.almoxMovs||[];
+  var abertas=cautelasAbertas();
+  var abaixoMin=itens.filter(function(i){return i.ativo!==false&&Number(i.qtd_minima)>0&&Number(i.qtd_estoque)<=Number(i.qtd_minima);});
+  var valorTotal=itens.reduce(function(a,i){return a+Number(i.qtd_estoque||0)*Number(i.valor_unit||0);},0);
+  g('cardsAlmox').innerHTML=
+    '<div class="card"><h3>Itens cadastrados</h3><div style="font-size:22px;font-weight:700">'+itens.filter(function(i){return i.ativo!==false;}).length+'</div></div>'+
+    '<div class="card"><h3>Cautelas abertas</h3><div style="font-size:22px;font-weight:700;color:'+(abertas.length?'#d97706':'#16a34a')+'">'+abertas.length+'</div></div>'+
+    '<div class="card"><h3>Abaixo do mínimo</h3><div style="font-size:22px;font-weight:700;color:'+(abaixoMin.length?'#dc2626':'#16a34a')+'">'+abaixoMin.length+'</div></div>'+
+    '<div class="card"><h3>Valor em estoque</h3><div style="font-size:22px;font-weight:700">'+fmt(valorTotal)+'</div></div>';
+
+  // ITENS
+  var fn=(g('filtAlmoxNome').value||'').toLowerCase();
+  var fc=g('filtAlmoxCateg').value, ft=g('filtAlmoxTipo').value;
+  var lista=itens.filter(function(i){return i.ativo!==false;});
+  if(fn)lista=lista.filter(function(i){return (i.nome+' '+(i.codigo||'')).toLowerCase().indexOf(fn)>-1;});
+  if(fc)lista=lista.filter(function(i){return i.categoria===fc;});
+  if(ft)lista=lista.filter(function(i){return i.tipo===ft;});
+  if(!lista.length){g('listaAlmoxItens').innerHTML='<div class="empty">🏭 Nenhum item cadastrado.<br><small>Clique em "+ Cadastrar item" para começar.</small></div>';}
+  else{
+    g('listaAlmoxItens').innerHTML='<table><thead><tr><th>Código</th><th>Item</th><th>Categoria</th><th>Tipo</th><th>Saldo</th><th>Mín.</th><th>Local</th><th></th></tr></thead><tbody>'+
+      lista.map(function(i){
+        var baixo=Number(i.qtd_minima)>0&&Number(i.qtd_estoque)<=Number(i.qtd_minima);
+        var emCautela=movs.filter(function(m){return m.tipo==='cautela'&&m.item_id===i.id&&(m.status==='aberta'||m.status==='parcial');})
+          .reduce(function(a,m){return a+(Number(m.qtd)-Number(m.qtd_devolvida||0));},0);
+        return '<tr><td>'+(i.codigo||'—')+'</td><td style="font-weight:600">'+i.nome+'</td>'+
+          '<td><span class="tag">'+(i.categoria||'—')+'</span></td>'+
+          '<td>'+(i.tipo==='ferramenta'?'🔧 Ferramenta':'📦 Consumível')+'</td>'+
+          '<td style="font-weight:700;color:'+(baixo?'#dc2626':'#1a1a1a')+'">'+Number(i.qtd_estoque||0)+' '+(i.unidade||'un')+(baixo?' ⚠️':'')+(emCautela?'<div style="font-size:11px;font-weight:400;color:#d97706">'+emCautela+' em cautela</div>':'')+'</td>'+
+          '<td>'+Number(i.qtd_minima||0)+'</td><td>'+(i.local||'—')+'</td>'+
+          '<td style="white-space:nowrap"><button class="btn sm" onclick="editItemAlmox(\''+i.id+'\')">✏</button> <button class="btn sm d" onclick="delItemAlmox(\''+i.id+'\')">✕</button></td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  // CAUTELAS ABERTAS
+  if(!abertas.length){g('listaAlmoxCautelas').innerHTML='<div class="empty">✅ Nenhuma cautela em aberto.</div>';}
+  else{
+    g('listaAlmoxCautelas').innerHTML='<table><thead><tr><th>Data</th><th>Item</th><th>Qtd</th><th>Colaborador</th><th>Obra</th><th>Dev. prevista</th><th>Status</th><th></th></tr></thead><tbody>'+
+      abertas.map(function(m){
+        var pend=Number(m.qtd)-Number(m.qtd_devolvida||0);
+        var atrasada=m.prev_devolucao&&m.prev_devolucao<hojeISO();
+        return '<tr><td>'+(m.data||'')+'</td><td style="font-weight:600">'+nomeItemAlmox(m.item_id)+'</td>'+
+          '<td>'+pend+(m.qtd_devolvida>0?' <span style="font-size:11px;color:#64748b">(de '+Number(m.qtd)+')</span>':'')+'</td>'+
+          '<td>'+(m.colaborador_nome||'—')+(m.colaborador_funcao?'<div style="font-size:11px;color:#64748b">'+m.colaborador_funcao+'</div>':'')+'</td>'+
+          '<td>'+(m.obra_nome||'—')+'</td>'+
+          '<td style="color:'+(atrasada?'#dc2626':'#1a1a1a')+'">'+(m.prev_devolucao||'—')+(atrasada?' ⚠️':'')+'</td>'+
+          '<td><span class="badge '+(m.status==='parcial'?'bo':'bdk')+'">'+(m.status==='parcial'?'Parcial':'Aberta')+'</span></td>'+
+          '<td style="white-space:nowrap"><button class="btn sm s" onclick="abrirModalDevolucao(\''+m.id+'\')">↩️ Devolver</button></td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  // HISTÓRICO
+  var fmT=g('filtAlmoxMovTipo').value, fmP=g('filtAlmoxMovPer').value;
+  var hist=movs.slice();
+  if(fmT)hist=hist.filter(function(m){return m.tipo===fmT;});
+  if(fmP)hist=hist.filter(function(m){return m.data&&m.data.indexOf(fmP)===0;});
+  if(!hist.length){g('listaAlmoxMovs').innerHTML='<div class="empty">📜 Nenhuma movimentação.</div>';}
+  else{
+    var tipoLabel={entrada:'📥 Entrada',cautela:'📤 Cautela',baixa:'📉 Baixa',devolucao:'↩️ Devolução'};
+    g('listaAlmoxMovs').innerHTML='<table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Qtd</th><th>Colaborador</th><th>Obra</th><th>Obs</th></tr></thead><tbody>'+
+      hist.map(function(m){
+        return '<tr><td>'+(m.data||'')+'</td><td>'+(tipoLabel[m.tipo]||m.tipo)+'</td>'+
+          '<td style="font-weight:600">'+nomeItemAlmox(m.item_id)+'</td><td>'+Number(m.qtd)+'</td>'+
+          '<td>'+(m.colaborador_nome||'—')+'</td><td>'+(m.obra_nome||'—')+'</td><td style="font-size:12px;color:#64748b">'+(m.obs||'')+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+}
+
+// ── CRUD ITEM ──
+function abrirModalItemAlmox(){
+  _almoxEditId=null;
+  g('tituloItemAlmox').textContent='🏭 Cadastrar item no almoxarifado';
+  ['aiCodigo','aiNome','aiValor','aiLocal','aiObs'].forEach(function(id){g(id).value='';});
+  g('aiQtd').value=0;g('aiQtdMin').value=0;g('aiCateg').value='Ferramentas';g('aiTipo').value='consumivel';g('aiUnid').value='un';
+  g('aiQtd').disabled=false;
+  abrirModal('modalItemAlmox');
+}
+function editItemAlmox(id){
+  var i=itemAlmox(id);if(!i)return;
+  _almoxEditId=id;
+  g('tituloItemAlmox').textContent='✏ Editar item';
+  g('aiCodigo').value=i.codigo||'';g('aiNome').value=i.nome||'';g('aiCateg').value=i.categoria||'Outros';
+  g('aiTipo').value=i.tipo||'consumivel';g('aiUnid').value=i.unidade||'un';
+  g('aiQtd').value=Number(i.qtd_estoque||0);g('aiQtd').disabled=true; // saldo muda por entrada/saída
+  g('aiQtdMin').value=Number(i.qtd_minima||0);g('aiValor').value=i.valor_unit||'';
+  g('aiLocal').value=i.local||'';g('aiObs').value=i.obs||'';
+  abrirModal('modalItemAlmox');
+}
+async function salvarItemAlmox(){
+  var nome=g('aiNome').value.trim();if(!nome){alert('Informe o nome do item.');return;}
+  var payload={codigo:g('aiCodigo').value.trim()||null,nome:nome,categoria:g('aiCateg').value,
+    unidade:g('aiUnid').value,tipo:g('aiTipo').value,
+    qtd_minima:Number(g('aiQtdMin').value)||0,valor_unit:Number(g('aiValor').value)||0,
+    local:g('aiLocal').value.trim()||null,obs:g('aiObs').value.trim()||null,ativo:true};
+  var res;
+  if(_almoxEditId){
+    res=await supa.from('almox_itens').update(payload).eq('id',_almoxEditId).select().single();
+  }else{
+    payload.qtd_estoque=Number(g('aiQtd').value)||0;
+    res=await supa.from('almox_itens').insert(payload).select().single();
+    if(!res.error&&payload.qtd_estoque>0){
+      var mv={item_id:res.data.id,tipo:'entrada',qtd:payload.qtd_estoque,data:hojeISO(),status:'concluida',
+        obs:'Estoque inicial (cadastro)',usuario:usuarioAtual?usuarioAtual.nome:null};
+      var rm=await supa.from('almox_movs').insert(mv).select().single();
+      if(!rm.error)db.almoxMovs.unshift(rm.data);
+    }
+  }
+  if(res.error){alert('Erro ao salvar: '+res.error.message);return;}
+  if(_almoxEditId){
+    var ix=db.almoxItens.findIndex(function(x){return x.id===_almoxEditId;});
+    if(ix>-1)db.almoxItens[ix]=res.data;
+  }else db.almoxItens.push(res.data);
+  db.almoxItens.sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');});
+  _almoxEditId=null;closeModal();renderEstoque();
+}
+async function delItemAlmox(id){
+  var i=itemAlmox(id);if(!i)return;
+  if(!confirm('Excluir "'+i.nome+'"? O histórico de movimentações dele também será removido.'))return;
+  var res=await supa.from('almox_itens').delete().eq('id',id);
+  if(res.error){alert('Erro: '+res.error.message);return;}
+  db.almoxItens=db.almoxItens.filter(function(x){return x.id!==id;});
+  db.almoxMovs=db.almoxMovs.filter(function(m){return m.item_id!==id;});
+  renderEstoque();
+}
+
+// ── ENTRADA ──
+function popularSelectItensAlmox(selId,soAtivos){
+  var sel=g(selId);if(!sel)return;
+  sel.innerHTML='<option value="">— Selecionar item —</option>'+
+    (db.almoxItens||[]).filter(function(i){return i.ativo!==false;}).map(function(i){
+      return '<option value="'+i.id+'">'+i.nome+' ('+Number(i.qtd_estoque||0)+' '+(i.unidade||'un')+')</option>';
+    }).join('');
+}
+function abrirModalEntradaAlmox(){
+  if(!(db.almoxItens||[]).length){alert('Cadastre um item primeiro.');return;}
+  popularSelectItensAlmox('aeItem');
+  g('aeQtd').value='';g('aeObs').value='';g('aeData').value=hojeISO();
+  abrirModal('modalEntradaAlmox');
+}
+async function salvarEntradaAlmox(){
+  var itemId=g('aeItem').value;var qtd=Number(g('aeQtd').value)||0;
+  if(!itemId){alert('Selecione o item.');return;}
+  if(qtd<=0){alert('Informe a quantidade.');return;}
+  var it=itemAlmox(itemId);
+  var mv={item_id:itemId,tipo:'entrada',qtd:qtd,data:g('aeData').value||hojeISO(),status:'concluida',
+    obs:g('aeObs').value.trim()||null,usuario:usuarioAtual?usuarioAtual.nome:null};
+  var rm=await supa.from('almox_movs').insert(mv).select().single();
+  if(rm.error){alert('Erro: '+rm.error.message);return;}
+  var novoSaldo=Number(it.qtd_estoque||0)+qtd;
+  var ru=await supa.from('almox_itens').update({qtd_estoque:novoSaldo}).eq('id',itemId);
+  if(ru.error){alert('Erro ao atualizar saldo: '+ru.error.message);return;}
+  it.qtd_estoque=novoSaldo;db.almoxMovs.unshift(rm.data);
+  closeModal();renderEstoque();
+}
+
+// ── CAUTELA / SAÍDA ──
+function abrirModalCautelaAlmox(){
+  if(!(db.almoxItens||[]).length){alert('Cadastre um item primeiro.');return;}
+  popularSelectItensAlmox('acItem');
+  var selC=g('acColab');
+  selC.innerHTML='<option value="">— Selecionar colaborador —</option>'+
+    (db.colaboradores||[]).map(function(c,ix){return '<option value="'+ix+'">'+c.nome+(c.func?' · '+c.func:'')+'</option>';}).join('');
+  var selO=g('acObra');
+  selO.innerHTML='<option value="">— Sem obra específica —</option>'+
+    (db.obras||[]).filter(function(o){return !o.finalizada;}).map(function(o){return '<option value="'+o.id+'">'+o.nome+'</option>';}).join('');
+  ['acQtd','acColabNome','acColabFunc','acPrev','acObs'].forEach(function(id){g(id).value='';});
+  g('acData').value=hojeISO();g('acInfoItem').innerHTML='';g('acAvisoTipo').innerHTML='';
+  abrirModal('modalCautelaAlmox');
+}
+function preencherColabCautela(){
+  var ix=g('acColab').value;
+  if(ix===''){return;}
+  var c=db.colaboradores[Number(ix)];
+  if(c){g('acColabNome').value=c.nome||'';g('acColabFunc').value=c.func||'';}
+}
+function atualizarInfoItemCautela(){
+  var it=itemAlmox(g('acItem').value);
+  if(!it){g('acInfoItem').innerHTML='';g('acAvisoTipo').innerHTML='';g('acPrevBox').style.display='block';return;}
+  var qtd=Number(g('acQtd').value)||0;
+  var saldo=Number(it.qtd_estoque||0);
+  var ok=qtd<=saldo;
+  g('acInfoItem').innerHTML='Saldo disponível: <b>'+saldo+' '+(it.unidade||'un')+'</b>'+
+    (qtd>0?' · Após a saída: <b style="color:'+(ok?'#16a34a':'#dc2626')+'">'+(saldo-qtd)+'</b>'+(ok?'':' ⚠️ saldo insuficiente'):'');
+  if(it.tipo==='ferramenta'){
+    g('acPrevBox').style.display='block';
+    g('acAvisoTipo').innerHTML='🔧 <b>Ferramenta/Equipamento</b> — sai como <b>cautela</b> e volta ao estoque na devolução.';
+  }else{
+    g('acPrevBox').style.display='none';
+    g('acAvisoTipo').innerHTML='📦 <b>Consumível</b> — sai como <b>baixa definitiva</b> no estoque (sem devolução).';
+  }
+}
+async function salvarCautelaAlmox(){
+  var itemId=g('acItem').value;var qtd=Number(g('acQtd').value)||0;
+  var colabNome=g('acColabNome').value.trim();
+  if(!itemId){alert('Selecione o item.');return;}
+  if(qtd<=0){alert('Informe a quantidade.');return;}
+  if(!colabNome){alert('Informe o colaborador que está retirando.');return;}
+  var it=itemAlmox(itemId);
+  if(qtd>Number(it.qtd_estoque||0)){alert('Saldo insuficiente. Disponível: '+Number(it.qtd_estoque||0)+' '+(it.unidade||'un'));return;}
+  var ehFerramenta=it.tipo==='ferramenta';
+  var colabIx=g('acColab').value;
+  var colab=colabIx!==''?db.colaboradores[Number(colabIx)]:null;
+  var obraId=g('acObra').value;
+  var obra=obraId?(db.obras||[]).find(function(o){return String(o.id)===String(obraId);}):null;
+  var mv={item_id:itemId,tipo:ehFerramenta?'cautela':'baixa',qtd:qtd,
+    colaborador_id:colab&&colab._sbId?colab._sbId:null,
+    colaborador_nome:colabNome,colaborador_funcao:g('acColabFunc').value.trim()||null,
+    obra_id:obra&&obra._sbId?obra._sbId:null,obra_nome:obra?obra.nome:null,
+    data:g('acData').value||hojeISO(),
+    prev_devolucao:ehFerramenta?(g('acPrev').value||null):null,
+    status:ehFerramenta?'aberta':'concluida',qtd_devolvida:0,
+    obs:g('acObs').value.trim()||null,usuario:usuarioAtual?usuarioAtual.nome:null};
+  var rm=await supa.from('almox_movs').insert(mv).select().single();
+  if(rm.error){alert('Erro: '+rm.error.message);return;}
+  var novoSaldo=Number(it.qtd_estoque||0)-qtd;
+  var ru=await supa.from('almox_itens').update({qtd_estoque:novoSaldo}).eq('id',itemId);
+  if(ru.error){alert('Erro ao atualizar saldo: '+ru.error.message);return;}
+  it.qtd_estoque=novoSaldo;db.almoxMovs.unshift(rm.data);
+  closeModal();renderEstoque();
+}
+
+// ── DEVOLUÇÃO ──
+function abrirModalDevolucao(movId){
+  var m=(db.almoxMovs||[]).find(function(x){return x.id===movId;});
+  if(!m)return;
+  _almoxDevMov=m;
+  var pend=Number(m.qtd)-Number(m.qtd_devolvida||0);
+  var it=itemAlmox(m.item_id);
+  g('devInfo').innerHTML='<b>'+(it?it.nome:'—')+'</b><br>'+
+    'Retirado por <b>'+(m.colaborador_nome||'—')+'</b> em '+(m.data||'—')+
+    (m.obra_nome?' · Obra: '+m.obra_nome:'')+'<br>'+
+    'Pendente de devolução: <b>'+pend+' '+(it?it.unidade||'un':'')+'</b>';
+  g('adQtd').value=pend;g('adQtd').max=pend;
+  g('adData').value=hojeISO();g('adObs').value='';
+  abrirModal('modalDevolucaoAlmox');
+}
+async function salvarDevolucaoAlmox(){
+  var m=_almoxDevMov;if(!m)return;
+  var qtd=Number(g('adQtd').value)||0;
+  var pend=Number(m.qtd)-Number(m.qtd_devolvida||0);
+  if(qtd<=0){alert('Informe a quantidade devolvida.');return;}
+  if(qtd>pend){alert('Quantidade maior que o pendente ('+pend+').');return;}
+  var it=itemAlmox(m.item_id);
+  var novaDevolvida=Number(m.qtd_devolvida||0)+qtd;
+  var novoStatus=novaDevolvida>=Number(m.qtd)?'devolvida':'parcial';
+  var mv={item_id:m.item_id,tipo:'devolucao',qtd:qtd,
+    colaborador_id:m.colaborador_id,colaborador_nome:m.colaborador_nome,colaborador_funcao:m.colaborador_funcao,
+    obra_id:m.obra_id,obra_nome:m.obra_nome,data:g('adData').value||hojeISO(),status:'concluida',
+    obs:(g('adObs').value.trim()||'')||('Devolução da cautela de '+(m.data||'')),
+    usuario:usuarioAtual?usuarioAtual.nome:null};
+  var rm=await supa.from('almox_movs').insert(mv).select().single();
+  if(rm.error){alert('Erro: '+rm.error.message);return;}
+  var ru=await supa.from('almox_movs').update({qtd_devolvida:novaDevolvida,status:novoStatus,devolucao_data:g('adData').value||hojeISO()}).eq('id',m.id);
+  if(ru.error){alert('Erro: '+ru.error.message);return;}
+  var novoSaldo=Number(it.qtd_estoque||0)+qtd;
+  var ri=await supa.from('almox_itens').update({qtd_estoque:novoSaldo}).eq('id',m.item_id);
+  if(ri.error){alert('Erro ao atualizar saldo: '+ri.error.message);return;}
+  it.qtd_estoque=novoSaldo;
+  m.qtd_devolvida=novaDevolvida;m.status=novoStatus;m.devolucao_data=g('adData').value||hojeISO();
+  db.almoxMovs.unshift(rm.data);
+  _almoxDevMov=null;closeModal();renderEstoque();
+}
+
+// ═══════════════════════════════════════════════════════
 // AUTENTICAÇÃO, PERFIS E CONTROLE DE ACESSO
 // ═══════════════════════════════════════════════════════
 var TELAS_APP=[
   {id:'dash',label:'📊 Dashboard'},{id:'orcamentos',label:'📋 GVT / Orçamentos'},
   {id:'obras',label:'🏗 Obras ativas'},{id:'progresso',label:'📈 Acompanhamento'},
-  {id:'materiais',label:'📦 Materiais'},{id:'maoObra',label:'👷 Mão de obra'},
+  {id:'materiais',label:'📦 Materiais'},{id:'estoque',label:'🏭 Estoque'},{id:'maoObra',label:'👷 Mão de obra'},
   {id:'indiretos',label:'🧾 Indiretos'},{id:'fluxo',label:'💳 Fluxo de caixa'},
   {id:'prevReal',label:'📈 Prev × Real'},{id:'fechamento',label:'🏁 Fechamento'},
   {id:'duplicatas',label:'💳 Duplicatas'},{id:'clientes',label:'👤 Clientes'},
@@ -3060,7 +3499,7 @@ var TELAS_APP=[
 ];
 var PERFIS={
   admin:{label:'👑 Admin',telas:TELAS_APP.map(function(t){return t.id;})},
-  obra:{label:'🏗 Obra',telas:['dash','obras','progresso','materiais','maoObra','colaboradores']},
+  obra:{label:'🏗 Obra',telas:['dash','obras','progresso','materiais','estoque','maoObra','colaboradores']},
   financeiro:{label:'💰 Financeiro',telas:['dash','duplicatas','fluxo','fechamento','indiretos','prevReal']},
   comercial:{label:'📋 Comercial',telas:['dash','orcamentos','clientes','tabela']}
 };
