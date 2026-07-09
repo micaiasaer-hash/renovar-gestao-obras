@@ -210,6 +210,7 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
 
 <!-- DASHBOARD -->
 <div id="dash" class="page active">
+  <div id="visaoEmpresa"></div>
   <div id="flowBar" class="flow-bar"></div>
   <div id="alertas" style="margin-bottom:10px"></div>
   <div id="cardsResumo" class="g2"></div>
@@ -2538,6 +2539,52 @@ function buildLucro(c){
     '<div class="lr '+cls+'"><span>Lucro real '+ind+'</span><span>'+fmt(c.lucro)+' ('+fmtP(c.margem)+')</span></div>';
 }
 
+function renderVisaoEmpresa(){
+  var el=g('visaoEmpresa'); if(!el) return;
+  var mes=hojeLocal().slice(0,7);
+  var mesFmt=mes.split('-')[1]+'/'+mes.split('-')[0];
+  // Obras
+  var obrasAtivas=(db.obras||[]).filter(function(o){return o.status!=='Finalizada'&&o.status!=='Cancelada';});
+  var contratado=obrasAtivas.reduce(function(a,o){return a+Number(o.valor||0);},0);
+  var lucroTot=0;
+  (db.obras||[]).forEach(function(o){ try{ lucroTot+=calcObra(o).lucro; }catch(e){} });
+  // Duplicatas
+  var pagar=0,receber=0,vencidas=0;
+  var hoje=new Date(); hoje.setHours(0,0,0,0);
+  (db.duplicatas||[]).forEach(function(dup){
+    (dup.parcelas||[]).forEach(function(p){
+      if(p.paga) return;
+      var v=Number(p.valor||0);
+      if(dup.tipo==='pagar') pagar+=v; else receber+=v;
+      if(dup.tipo==='pagar' && p.venc && new Date(p.venc+'T00:00')<hoje) vencidas+=v;
+    });
+  });
+  // Folha
+  var salarios=0,nSal=0;
+  (db.colaboradores||[]).forEach(function(c){ if(Number(c.salario)>0){ salarios+=Number(c.salario); nSal++; } });
+  var folhaPaga=0,folhaPend=0,comis=0;
+  (db.folha||[]).forEach(function(f){
+    var ref=f.competencia||(f.dataPgto?f.dataPgto.slice(0,7):'');
+    if(ref!==mes) return;
+    if(f.status==='pago'){ folhaPaga+=f.valor; if(f.tipo==='Comissão') comis+=f.valor; }
+    else folhaPend+=f.valor;
+  });
+  // Fluxo do mês
+  var entradasMes=0;
+  (db.fluxo||[]).forEach(function(fx){ if((fx.data||'').slice(0,7)===mes) entradasMes+=Number(fx.valor||0); });
+  el.innerHTML=
+    '<div style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1px;margin:2px 0 8px">🏢 VISÃO GERAL DA EMPRESA — '+mesFmt+'</div>'+
+    '<div class="g2" style="margin-bottom:16px">'+
+      '<div class="mc"><div class="lb">Obras em andamento</div><div class="vl">'+obrasAtivas.length+'</div><div class="sb">Contratado: '+fmt(contratado)+'</div></div>'+
+      '<div class="mc ok"><div class="lb">A receber (aberto)</div><div class="vl">'+fmt(receber)+'</div></div>'+
+      '<div class="mc '+(vencidas>0?'bad':'')+'"><div class="lb">A pagar (aberto)</div><div class="vl">'+fmt(pagar)+'</div><div class="sb">Vencidas: '+fmt(vencidas)+'</div></div>'+
+      '<div class="mc"><div class="lb">Folha mensal (salários)</div><div class="vl">'+fmt(salarios)+'</div><div class="sb">'+nSal+' colaborador(es) com salário</div></div>'+
+      '<div class="mc '+(folhaPend>0?'mid':'ok')+'"><div class="lb">Folha paga no mês</div><div class="vl">'+fmt(folhaPaga)+'</div><div class="sb">Pendente: '+fmt(folhaPend)+' · Comissões: '+fmt(comis)+'</div></div>'+
+      '<div class="mc '+(lucroTot>=0?'ok':'bad')+'"><div class="lb">Lucro real (todas as obras)</div><div class="vl">'+fmt(lucroTot)+'</div><div class="sb">Entradas no mês: '+fmt(entradasMes)+'</div></div>'+
+    '</div>'+
+    '<div style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1px;margin:2px 0 8px">🏗 OBRA SELECIONADA</div>';
+}
+
 function renderDash(){
   if(!obraAtual){g('cardsResumo').innerHTML='<p style="color:#94a3b8;font-size:13px">Selecione ou crie uma obra.</p>';g('alertas').innerHTML='';g('resumoObra').innerHTML='';g('nomeObraDash').textContent='';g('flowBar').innerHTML='';return;}
   var c=calcObra(obraAtual);
@@ -2749,7 +2796,7 @@ function usarPreco(preco,desc){
 }
 
 function render(){
-  renderSelect();renderDash();renderOrcamentos();renderObras();
+  renderSelect();renderVisaoEmpresa();renderDash();renderOrcamentos();renderObras();
   renderMat();renderMO();renderInd();renderFx();
   renderPrevReal();renderFechamento();renderTabela();
   renderClientes();renderColaboradores();
