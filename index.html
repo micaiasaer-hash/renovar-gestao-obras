@@ -440,6 +440,13 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   </div>
   <div class="frow" style="margin-bottom:12px">
     <input type="text" id="filtColab" placeholder="Buscar colaborador..." oninput="renderColaboradores()" style="flex:1;min-width:180px">
+    <select id="filtAreaColab" onchange="renderColaboradores()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px">
+      <option value="">Todas as áreas</option>
+      <option value="gestao">👑 Gestão</option>
+      <option value="adm">🗂 Administrativo</option>
+      <option value="tecnico">📐 Técnico</option>
+      <option value="operacional">🏗 Operacional</option>
+    </select>
     <select id="filtTipoColab" onchange="renderColaboradores()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px">
       <option value="">Todos os tipos</option>
       <option>Fixo</option><option>Freelancer</option><option>Subcontratado</option><option>Empresa</option>
@@ -1195,7 +1202,29 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
     </div>
     <div class="fr">
       <div class="fg"><label>Função principal *</label>
-        <select id="colFunc"><option>Pedreiro</option><option>Servente</option><option>Eletricista</option><option>Encanador</option><option>Pintor</option><option>Gesseiro</option><option>Azulejista</option><option>Instalador</option><option>Diarista</option><option>Mestre de obras</option><option>Encarregado</option><option>Outros</option></select>
+        <select id="colFunc">
+          <optgroup label="👑 Gestão">
+            <option>Sócio / Proprietário</option><option>Diretor</option><option>Gerente</option>
+            <option>Coordenador</option><option>Supervisor</option>
+          </optgroup>
+          <optgroup label="🗂 Administrativo">
+            <option>Administrativo</option><option>Financeiro</option><option>Compras</option>
+            <option>RH</option><option>Comercial / Vendas</option><option>Secretária(o)</option>
+            <option>Orçamentista</option>
+          </optgroup>
+          <optgroup label="📐 Técnico">
+            <option>Engenheiro civil</option><option>Arquiteto</option>
+            <option>Técnico de segurança</option><option>Projetista</option>
+          </optgroup>
+          <optgroup label="🏗 Operacional">
+            <option>Mestre de obras</option><option>Encarregado</option><option>Pedreiro</option>
+            <option>Servente</option><option>Eletricista</option><option>Encanador</option>
+            <option>Pintor</option><option>Gesseiro</option><option>Azulejista</option>
+            <option>Instalador</option><option>Diarista</option><option>Almoxarife</option>
+            <option>Motorista</option><option>Ajudante geral</option>
+          </optgroup>
+          <option>Outros</option>
+        </select>
       </div>
       <div class="fg"><label>Tipo de vínculo</label>
         <select id="colTipoV"><option>Fixo</option><option>Freelancer</option><option>Subcontratado</option><option>Empresa</option></select>
@@ -2336,13 +2365,25 @@ function delColab(i){
   db.colaboradores.splice(i,1);save();renderColaboradores();popularSelectColab();
 }
 
+var AREAS_FUNC={
+  gestao:['Sócio / Proprietário','Diretor','Gerente','Coordenador','Supervisor'],
+  adm:['Administrativo','Financeiro','Compras','RH','Comercial / Vendas','Secretária(o)','Orçamentista'],
+  tecnico:['Engenheiro civil','Arquiteto','Técnico de segurança','Projetista'],
+  operacional:['Mestre de obras','Encarregado','Pedreiro','Servente','Eletricista','Encanador','Pintor','Gesseiro','Azulejista','Instalador','Diarista','Almoxarife','Motorista','Ajudante geral']
+};
+function areaDaFuncao(func){
+  for(var k in AREAS_FUNC){ if(AREAS_FUNC[k].indexOf(func)>-1) return k; }
+  return 'operacional';
+}
 function renderColaboradores(){
   if(!db.colaboradores)db.colaboradores=[];
   var q=(g('filtColab')?g('filtColab').value||'':'').toLowerCase();
   var tp=g('filtTipoColab')?g('filtTipoColab').value:'';
+  var ar=g('filtAreaColab')?g('filtAreaColab').value:'';
   var lista=db.colaboradores;
   if(q)lista=lista.filter(function(c){return (c.nome||'').toLowerCase().indexOf(q)>-1||(c.func||'').toLowerCase().indexOf(q)>-1;});
   if(tp)lista=lista.filter(function(c){return c.tipo===tp;});
+  if(ar)lista=lista.filter(function(c){return areaDaFuncao(c.func)===ar;});
   var el=g('listaColaboradores');
   if(!el)return;
   if(!lista.length){el.innerHTML='<div class="empty">👷 Nenhum colaborador cadastrado.<br><small>Clique em "+ Novo colaborador" para adicionar.</small></div>';return;}
