@@ -1089,8 +1089,8 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
 <div class="modal" id="modalFolha" style="width:min(96vw,520px)">
   <h3 id="tituloFolha">💵 Novo pagamento</h3>
   <div class="fr">
-    <div class="fg"><label>Colaborador *</label><select id="fpColab"></select></div>
-    <div class="fg"><label>Tipo *</label><select id="fpTipo"><option>Salário</option><option>Comissão</option><option>Vale</option></select></div>
+    <div class="fg"><label>Colaborador *</label><select id="fpColab" onchange="fpAutoValor()"></select></div>
+    <div class="fg"><label>Tipo *</label><select id="fpTipo" onchange="fpAutoValor()"><option>Salário</option><option>Comissão</option><option>Vale</option></select></div>
   </div>
   <div class="fr">
     <div class="fg"><label>Valor (R$) *</label><input type="number" id="fpValor" placeholder="0,00"></div>
@@ -1203,6 +1203,7 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
     </div>
     <div class="fr">
       <div class="fg"><label>Especialidades / outros serviços</label><input id="colEspec" placeholder="Ex: Drywall, gesso, pintura..."></div>
+      <div class="fg"><label>Salário mensal (R$)</label><input type="number" id="colSalario" placeholder="0,00"></div>
       <div class="fg"><label>Valor de diária (R$)</label><input type="number" id="colDiaria" placeholder="0,00"></div>
       <div class="fg"><label>Valor hora (R$)</label><input type="number" id="colHora" placeholder="0,00"></div>
     </div>
@@ -1445,7 +1446,7 @@ async function load(){
     db.colaboradores = (colabs.data||[]).map(function(r){
       return {id:r.id,nome:r.nome,apelido:r.apelido,cpf:r.cpf,rg:r.rg,nasc:r.nasc,
         tel:r.tel,email:r.email,func:r.func,tipo:r.tipo,espec:r.espec,
-        diaria:r.diaria,hora:r.hora,banco:r.banco,agencia:r.agencia,
+        salario:r.salario,diaria:r.diaria,hora:r.hora,banco:r.banco,agencia:r.agencia,
         conta:r.conta,pix:r.pix,pixTipo:r.pix_tipo,obs:r.obs,
         cadastro:r.cadastro, _sbId:r.id};
     });
@@ -2296,7 +2297,7 @@ function abrirModalColaborador(idx){
   idx=idx===undefined?null:idx;
   ed._colIdx=idx;
   g('tituloColaborador').textContent=idx!==null?'✏️ Editar colaborador':'👷 Novo colaborador';
-  ['colNome','colApelido','colCpf','colRg','colTel','colEmail','colEspec','colDiaria','colHora','colBanco','colAgencia','colConta','colPix','colObs'].forEach(function(id){if(g(id))g(id).value='';});
+  ['colNome','colApelido','colCpf','colRg','colTel','colEmail','colEspec','colSalario','colDiaria','colHora','colBanco','colAgencia','colConta','colPix','colObs'].forEach(function(id){if(g(id))g(id).value='';});
   g('colFunc').value='Pedreiro';g('colTipoV').value='Fixo';g('colPixTipo').value='CPF';g('colNasc').value='';
   if(idx!==null){
     var c=db.colaboradores[idx];
@@ -2304,7 +2305,7 @@ function abrirModalColaborador(idx){
     g('colCpf').value=c.cpf||'';g('colRg').value=c.rg||'';g('colNasc').value=c.nasc||'';
     g('colTel').value=c.tel||'';g('colEmail').value=c.email||'';
     g('colFunc').value=c.func||'Pedreiro';g('colTipoV').value=c.tipo||'Fixo';
-    g('colEspec').value=c.espec||'';g('colDiaria').value=c.diaria||'';g('colHora').value=c.hora||'';
+    g('colEspec').value=c.espec||'';g('colSalario').value=c.salario||'';g('colDiaria').value=c.diaria||'';g('colHora').value=c.hora||'';
     g('colBanco').value=c.banco||'';g('colAgencia').value=c.agencia||'';g('colConta').value=c.conta||'';
     g('colPix').value=c.pix||'';g('colPixTipo').value=c.pixTipo||'CPF';
     g('colObs').value=c.obs||'';
@@ -2367,6 +2368,7 @@ function renderColaboradores(){
       '<div class="g2" style="margin-top:10px">'+
         '<div><div style="font-size:10px;color:#64748b">Telefone / WhatsApp</div><div style="font-weight:600">'+(c.tel||'—')+'</div></div>'+
         '<div><div style="font-size:10px;color:#64748b">Chave Pix</div><div style="font-weight:600">'+(c.pix?c.pix+' ('+c.pixTipo+')':'—')+'</div></div>'+
+        '<div><div style="font-size:10px;color:#64748b">Salário mensal</div><div style="font-weight:600">'+(c.salario?fmt(c.salario):'—')+'</div></div>'+
         '<div><div style="font-size:10px;color:#64748b">Diária / Hora</div><div style="font-weight:600">'+(c.diaria?'R$ '+c.diaria+'/dia':c.hora?'R$ '+c.hora+'/h':'—')+'</div></div>'+
         '<div><div style="font-size:10px;color:#64748b">Total recebido (obras)</div><div style="font-weight:600;color:var(--suc)">'+(totalPago>0?'R$ '+totalPago.toLocaleString('pt-BR',{minimumFractionDigits:2}):'R$ 0,00')+'</div></div>'+
       '</div>'+
@@ -3072,6 +3074,7 @@ salvarColaborador = async function() {
     tel:g('colTel').value, email:g('colEmail').value,
     func:g('colFunc').value, tipo:g('colTipoV').value,
     espec:g('colEspec').value,
+    salario:parseFloat(g('colSalario').value)||null,
     diaria:parseFloat(g('colDiaria').value)||null,
     hora:parseFloat(g('colHora').value)||null,
     banco:g('colBanco').value, agencia:g('colAgencia').value, conta:g('colConta').value,
@@ -3299,6 +3302,13 @@ async function pagarFolha(i){
   var res = await supa.from('folha').update({ status:'pago', data_pgto: f.dataPgto || hojeLocal() }).eq('id', f.id);
   if(res.error){ alert('Erro: ' + res.error.message); return; }
   await load(); renderFolha();
+}
+
+function fpAutoValor(){
+  if(_fpEditIdx!==null) return;
+  if(g('fpTipo').value!=='Salário') return;
+  var c=(db.colaboradores||[]).find(function(x){ return x.nome===g('fpColab').value; });
+  if(c && c.salario) g('fpValor').value = c.salario;
 }
 
 function _refFolha(f){ return f.competencia || (f.dataPgto ? f.dataPgto.slice(0,7) : ''); }
