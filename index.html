@@ -202,6 +202,7 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   <button onclick="showPage('duplicatas',this)">💳 Duplicatas</button>
   <button onclick="showPage('clientes',this)">👤 Clientes</button>
   <button onclick="showPage('colaboradores',this)">👷 Colaboradores</button>
+  <button onclick="showPage('folha',this)">💵 Folha</button>
   <button onclick="showPage('progresso',this)">📈 Acompanhamento</button>
   <button onclick="showPage('tabela',this)">💲 Preços</button>
   <button onclick="showPage('usuarios',this)">🔐 Usuários</button>
@@ -388,6 +389,33 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   </div>
 
   <div id="listaDuplicatas"></div>
+</div>
+<!-- FOLHA DE PAGAMENTO -->
+<div id="folha" class="page">
+  <div class="sh">
+    <h2 style="font-size:16px;font-weight:700">💵 Folha de Pagamento</h2>
+    <button class="btn p" onclick="abrirModalFolha()">+ Novo pagamento</button>
+  </div>
+
+  <!-- Cards resumo -->
+  <div id="cardsFolha" class="g2" style="margin-bottom:14px"></div>
+
+  <!-- Filtros -->
+  <div class="frow" style="margin-bottom:12px">
+    <input type="text" id="filtFolhaBusca" placeholder="Buscar por colaborador..." oninput="renderFolha()" style="flex:1;min-width:180px">
+    <select id="filtFolhaTipo" onchange="renderFolha()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px">
+      <option value="">Todos os tipos</option>
+      <option>Salário</option><option>Comissão</option><option>Vale</option>
+    </select>
+    <select id="filtFolhaStatus" onchange="renderFolha()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px">
+      <option value="">Todos os status</option>
+      <option value="pago">Pago</option>
+      <option value="pendente">Pendente</option>
+    </select>
+    <input type="month" id="filtFolhaMes" oninput="renderFolha()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px">
+  </div>
+
+  <div id="listaFolha"></div>
 </div>
 <div id="clientes" class="page">
   <div class="sh">
@@ -1057,6 +1085,33 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   </div>
 </div>
 
+<!-- MODAL FOLHA DE PAGAMENTO -->
+<div class="modal" id="modalFolha" style="width:min(96vw,520px)">
+  <h3 id="tituloFolha">💵 Novo pagamento</h3>
+  <div class="fr">
+    <div class="fg"><label>Colaborador *</label><select id="fpColab"></select></div>
+    <div class="fg"><label>Tipo *</label><select id="fpTipo"><option>Salário</option><option>Comissão</option><option>Vale</option></select></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Valor (R$) *</label><input type="number" id="fpValor" placeholder="0,00"></div>
+    <div class="fg"><label>Mês de referência</label><input type="month" id="fpComp"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Data do pagamento</label><input type="date" id="fpData"></div>
+    <div class="fg"><label>Status</label><select id="fpStatus"><option value="pago">Pago</option><option value="pendente">Pendente</option></select></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label>Forma de pagamento</label>
+      <select id="fpForma"><option>Pix</option><option>Transferência</option><option>Dinheiro</option><option>Cheque</option></select>
+    </div>
+    <div class="fg"><label>Observação</label><input id="fpObs" placeholder="Opcional"></div>
+  </div>
+  <div class="mf2">
+    <button class="btn" onclick="closeModal()">Cancelar</button>
+    <button class="btn s" onclick="salvarFolha()">💾 Salvar</button>
+  </div>
+</div>
+
 <!-- MODAL NOTAS -->
 <div class="modal" id="modalNotaDup" style="width:min(96vw,500px)">
   <h3 id="tituloNotaDup">📝 Notas da duplicata</h3>
@@ -1311,7 +1366,7 @@ var PRECOS=[
 ];
 
 var KEY='gestaoObrasV7';
-var db={orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],almoxItens:[],almoxMovs:[]};
+var db={orcamentos:[],obras:[],materiais:[],maoObra:[],indiretos:[],fluxo:[],almoxItens:[],almoxMovs:[],folha:[]};
 var obraAtual=null;
 var ed={gvt:null,mat:null,mo:null,ind:null};
 var pchart=null,pvchart=null;
@@ -1319,7 +1374,7 @@ var pchart=null,pvchart=null;
 function save(){ /* Supabase - salva nas funções individuais */ }
 async function load(){
   try {
-    var [orc,obras,mats,mos,inds,fluxo,dups,clis,colabs] = await Promise.all([
+    var [orc,obras,mats,mos,inds,fluxo,dups,clis,colabs,folhaRes] = await Promise.all([
       supa.from('orcamentos').select('*').order('created_at',{ascending:false}),
       supa.from('obras').select('*').order('created_at',{ascending:false}),
       supa.from('materiais').select('*'),
@@ -1328,7 +1383,8 @@ async function load(){
       supa.from('fluxo').select('*'),
       supa.from('duplicatas').select('*'),
       supa.from('clientes').select('*'),
-      supa.from('colaboradores').select('*')
+      supa.from('colaboradores').select('*'),
+      supa.from('folha').select('*').order('created_at',{ascending:false})
     ]);
     db.orcamentos = (orc.data||[]).map(function(r){
       var o=JSON.parse(JSON.stringify(r));
@@ -1392,6 +1448,12 @@ async function load(){
         diaria:r.diaria,hora:r.hora,banco:r.banco,agencia:r.agencia,
         conta:r.conta,pix:r.pix,pixTipo:r.pix_tipo,obs:r.obs,
         cadastro:r.cadastro, _sbId:r.id};
+    });
+    db.folha = (folhaRes.data||[]).map(function(r){
+      return {id:r.id,colaborador:r.colaborador,tipo:r.tipo||'Salário',
+        competencia:r.competencia||'',valor:Number(r.valor||0),
+        dataPgto:r.data_pgto||'',status:r.status||'pendente',
+        forma:r.forma||'',obs:r.obs||'', _sbId:r.id};
     });
     var extra = await Promise.all([
       supa.from('usuarios').select('*').order('nome'),
@@ -2648,7 +2710,7 @@ function render(){
   renderMat();renderMO();renderInd();renderFx();
   renderPrevReal();renderFechamento();renderTabela();
   renderClientes();renderColaboradores();
-  renderDuplicatas();renderAlertasDup();
+  renderDuplicatas();renderAlertasDup();renderFolha();
   popularSelectColab();popularSelectCliente();
   renderEstoque();
 }
@@ -3173,6 +3235,139 @@ confirmarBaixa = async function(){
   closeModal(); renderDuplicatas(); renderAlertasDup();
 };
 
+// ── FOLHA DE PAGAMENTO ───────────────────────────────────────
+var _fpEditIdx = null;
+function abrirModalFolha(idx){
+  _fpEditIdx = (idx!==undefined && idx!==null) ? idx : null;
+  g('tituloFolha').textContent = _fpEditIdx!==null ? '✏️ Editar pagamento' : '💵 Novo pagamento';
+  var sel = g('fpColab');
+  sel.innerHTML = '<option value="">Selecione...</option>' +
+    (db.colaboradores||[]).map(function(c){ return '<option>'+c.nome+'</option>'; }).join('');
+  g('fpTipo').value='Salário'; g('fpValor').value='';
+  g('fpComp').value = hojeLocal().slice(0,7);
+  g('fpData').value = hojeLocal();
+  g('fpStatus').value='pago'; g('fpForma').value='Pix'; g('fpObs').value='';
+  if(_fpEditIdx!==null && db.folha[_fpEditIdx]){
+    var f = db.folha[_fpEditIdx];
+    var tem = Array.prototype.some.call(sel.options, function(o){ return o.value===f.colaborador; });
+    if(!tem) sel.innerHTML += '<option>'+f.colaborador+'</option>';
+    sel.value = f.colaborador;
+    g('fpTipo').value = f.tipo || 'Salário';
+    g('fpValor').value = f.valor;
+    g('fpComp').value = f.competencia || '';
+    g('fpData').value = f.dataPgto || '';
+    g('fpStatus').value = f.status || 'pendente';
+    g('fpForma').value = f.forma || 'Pix';
+    g('fpObs').value = f.obs || '';
+  }
+  abrirModal('modalFolha');
+}
+
+async function salvarFolha(){
+  var colab = g('fpColab').value;
+  if(!colab){ alert('Selecione o colaborador.'); return; }
+  var valor = parseFloat(g('fpValor').value)||0;
+  if(!valor){ alert('Informe o valor.'); return; }
+  var payload = {
+    colaborador: colab, tipo: g('fpTipo').value,
+    competencia: g('fpComp').value || null,
+    valor: valor, data_pgto: g('fpData').value || null,
+    status: g('fpStatus').value, forma: g('fpForma').value,
+    obs: g('fpObs').value
+  };
+  var res;
+  if(_fpEditIdx!==null && db.folha[_fpEditIdx] && db.folha[_fpEditIdx].id){
+    res = await supa.from('folha').update(payload).eq('id', db.folha[_fpEditIdx].id);
+  } else {
+    res = await supa.from('folha').insert(payload);
+  }
+  if(res.error){ alert('Erro: ' + res.error.message); return; }
+  _fpEditIdx = null;
+  await load(); closeModal(); renderFolha();
+}
+
+async function delFolha(i){
+  if(!confirm('Excluir este pagamento?')) return;
+  var f = db.folha[i];
+  if(f && f.id) await supa.from('folha').delete().eq('id', f.id);
+  await load(); renderFolha();
+}
+
+async function pagarFolha(i){
+  var f = db.folha[i];
+  if(!f) return;
+  var res = await supa.from('folha').update({ status:'pago', data_pgto: f.dataPgto || hojeLocal() }).eq('id', f.id);
+  if(res.error){ alert('Erro: ' + res.error.message); return; }
+  await load(); renderFolha();
+}
+
+function _refFolha(f){ return f.competencia || (f.dataPgto ? f.dataPgto.slice(0,7) : ''); }
+
+function renderCardsFolha(){
+  if(!g('cardsFolha')) return;
+  var mes = g('filtFolhaMes').value || hojeLocal().slice(0,7);
+  var pago=0, pend=0, comis=0;
+  (db.folha||[]).forEach(function(f){
+    if(_refFolha(f)!==mes) return;
+    if(f.status==='pago') pago+=f.valor; else pend+=f.valor;
+    if(f.tipo==='Comissão' && f.status==='pago') comis+=f.valor;
+  });
+  var mesFmt = mes.split('-')[1]+'/'+mes.split('-')[0];
+  g('cardsFolha').innerHTML =
+    '<div class="mc ok"><div class="lb">Pago no mês</div><div class="vl">'+fmt(pago)+'</div><div class="sb">'+mesFmt+'</div></div>'+
+    '<div class="mc bad"><div class="lb">Pendente no mês</div><div class="vl">'+fmt(pend)+'</div><div class="sb">'+mesFmt+'</div></div>'+
+    '<div class="mc mid"><div class="lb">Comissões pagas</div><div class="vl">'+fmt(comis)+'</div><div class="sb">'+mesFmt+'</div></div>';
+}
+
+function renderFolha(){
+  var el = g('listaFolha');
+  if(!el) return;
+  renderCardsFolha();
+  var busca = (g('filtFolhaBusca').value||'').toLowerCase();
+  var tipo = g('filtFolhaTipo').value;
+  var st = g('filtFolhaStatus').value;
+  var mes = g('filtFolhaMes').value;
+  var regs = [];
+  (db.folha||[]).forEach(function(f,i){
+    if(busca && (f.colaborador||'').toLowerCase().indexOf(busca)===-1) return;
+    if(tipo && f.tipo!==tipo) return;
+    if(st && f.status!==st) return;
+    if(mes && _refFolha(f)!==mes) return;
+    regs.push({f:f, ix:i});
+  });
+  if(!regs.length){
+    el.innerHTML = '<div style="background:#fff;border:1px solid var(--bdr);border-radius:10px;text-align:center;color:#94a3b8;padding:24px;font-size:13px">Nenhum pagamento registrado. Clique em <b>+ Novo pagamento</b>.</div>';
+    return;
+  }
+  var icone = {'Salário':'💰','Comissão':'⭐','Vale':'🏷️'};
+  el.innerHTML = '<div style="background:#fff;border:1px solid var(--bdr);border-radius:10px;overflow-x:auto">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:640px">'+
+    '<thead><tr style="background:#f8fafc;text-align:left;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px">'+
+    '<th style="padding:10px 12px">Colaborador</th><th style="padding:10px 12px">Tipo</th>'+
+    '<th style="padding:10px 12px">Referência</th><th style="padding:10px 12px">Valor</th>'+
+    '<th style="padding:10px 12px">Data pgto</th><th style="padding:10px 12px">Status</th>'+
+    '<th style="padding:10px 12px;text-align:right">Ações</th></tr></thead><tbody>'+
+    regs.map(function(r){
+      var f=r.f;
+      var stTag = f.status==='pago'
+        ? '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px">Pago</span>'
+        : '<span style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px">Pendente</span>';
+      var dt = f.dataPgto ? new Date(f.dataPgto+'T00:00').toLocaleDateString('pt-BR') : '—';
+      var ref = f.competencia ? (f.competencia.split('-')[1]+'/'+f.competencia.split('-')[0]) : '—';
+      var acoes = (f.status!=='pago' ? '<button class="btn sm s" onclick="pagarFolha('+r.ix+')">✅ Pagar</button> ' : '')+
+        '<button class="btn sm" onclick="abrirModalFolha('+r.ix+')">✏️</button> '+
+        '<button class="btn sm d" onclick="delFolha('+r.ix+')">✕</button>';
+      return '<tr style="border-top:1px solid #f1f5f9">'+
+        '<td style="padding:10px 12px;font-weight:600">'+f.colaborador+'</td>'+
+        '<td style="padding:10px 12px">'+(icone[f.tipo]||'')+' '+f.tipo+(f.obs?'<div style="font-size:11px;color:#94a3b8">'+f.obs+'</div>':'')+'</td>'+
+        '<td style="padding:10px 12px">'+ref+'</td>'+
+        '<td style="padding:10px 12px;font-weight:700">'+fmt(f.valor)+'</td>'+
+        '<td style="padding:10px 12px">'+dt+(f.forma&&f.status==='pago'?'<div style="font-size:11px;color:#94a3b8">'+f.forma+'</div>':'')+'</td>'+
+        '<td style="padding:10px 12px">'+stTag+'</td>'+
+        '<td style="padding:10px 12px;text-align:right;white-space:nowrap">'+acoes+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
 // Adicionar nota — persiste no Supabase
 var _origAdicionarNota = adicionarNota;
 adicionarNota = async function(){
@@ -3586,13 +3781,13 @@ var TELAS_APP=[
   {id:'indiretos',label:'🧾 Indiretos'},{id:'fluxo',label:'💳 Fluxo de caixa'},
   {id:'prevReal',label:'📈 Prev × Real'},{id:'fechamento',label:'🏁 Fechamento'},
   {id:'duplicatas',label:'💳 Duplicatas'},{id:'clientes',label:'👤 Clientes'},
-  {id:'colaboradores',label:'👷 Colaboradores'},{id:'tabela',label:'💲 Preços'},
+  {id:'colaboradores',label:'👷 Colaboradores'},{id:'folha',label:'💵 Folha'},{id:'tabela',label:'💲 Preços'},
   {id:'usuarios',label:'🔐 Usuários'}
 ];
 var PERFIS={
   admin:{label:'👑 Admin',telas:TELAS_APP.map(function(t){return t.id;})},
   obra:{label:'🏗 Obra',telas:['dash','obras','progresso','materiais','estoque','maoObra','colaboradores']},
-  financeiro:{label:'💰 Financeiro',telas:['dash','duplicatas','fluxo','fechamento','indiretos','prevReal']},
+  financeiro:{label:'💰 Financeiro',telas:['dash','duplicatas','fluxo','fechamento','indiretos','prevReal','folha']},
   comercial:{label:'📋 Comercial',telas:['dash','orcamentos','clientes','tabela']}
 };
 var usuarioAtual=null;
