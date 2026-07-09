@@ -3146,6 +3146,48 @@ delDuplicata = async function(i) {
   await load(); renderDuplicatas();
 };
 
+// Confirmar pagamento de parcela — persiste no Supabase
+var _origConfirmarBaixa = confirmarBaixa;
+confirmarBaixa = async function(){
+  if(!_baixaIdx) return;
+  var dup = db.duplicatas[_baixaIdx.dup];
+  var parc = dup.parcelas[_baixaIdx.parc];
+  parc.paga = true;
+  parc.dataPgto = g('baixaData').value;
+  parc.valorPago = parseFloat(g('baixaValor').value) || parc.valor;
+  parc.comprovante = g('baixaComp').value;
+  if(!dup.notas) dup.notas = [];
+  var obs = g('baixaObs').value.trim();
+  if(obs) dup.notas.push({texto:'Pagamento parcela '+(_baixaIdx.parc+1)+': '+obs, data:new Date().toLocaleString('pt-BR'), auto:true});
+  dup.notas.push({texto:'✅ Parcela '+(_baixaIdx.parc+1)+'/'+dup.parcelas.length+' paga — '+fmt(parc.valorPago)+' via '+g('baixaForma').value+(parc.comprovante?' · Comp: '+parc.comprovante:''), data:new Date().toLocaleString('pt-BR'), auto:true});
+  var totalPago = dup.parcelas.reduce(function(a,p){ return a + (p.paga ? (p.valorPago||p.valor) : 0); }, 0);
+  var todasPagas = dup.parcelas.length > 0 && dup.parcelas.every(function(p){ return p.paga; });
+  var res = await supa.from('duplicatas').update({
+    parcelas: dup.parcelas,
+    notas: dup.notas,
+    status: todasPagas ? 'paga' : 'aberta',
+    pago: totalPago
+  }).eq('id', dup.id);
+  if(res.error){ alert('Erro ao salvar pagamento: ' + res.error.message); return; }
+  _baixaIdx = null;
+  closeModal(); renderDuplicatas(); renderAlertasDup();
+};
+
+// Adicionar nota — persiste no Supabase
+var _origAdicionarNota = adicionarNota;
+adicionarNota = async function(){
+  if(_notaIdx === null) return;
+  var txt = g('novaNota').value.trim();
+  if(!txt){ alert('Digite a nota.'); return; }
+  var dup = db.duplicatas[_notaIdx];
+  if(!dup.notas) dup.notas = [];
+  dup.notas.push({texto:txt, data:new Date().toLocaleString('pt-BR'), auto:false});
+  var res = await supa.from('duplicatas').update({ notas: dup.notas }).eq('id', dup.id);
+  if(res.error){ alert('Erro ao salvar nota: ' + res.error.message); return; }
+  abrirNotas(_notaIdx);
+  g('novaNota').value = '';
+};
+
 // Aprovar orçamento
 var _origAprovarOrcamento = aprovarOrcamento;
 aprovarOrcamento = async function(idx) {
