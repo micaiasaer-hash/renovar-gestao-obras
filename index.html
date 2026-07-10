@@ -1989,26 +1989,56 @@ function proxVencimento(dup){
   return abertas[0].venc;
 }
 
+var _parcelasEdit = [];
 function calcParcelas(){
   var valor  = parseFloat(g('dupValor').value) || 0;
   var nParc  = parseInt(g('dupNParcelas').value) || 1;
   var venc1  = g('dupVenc').value;
   var vpp    = valor / nParc;
   g('dupValorParc').value = vpp.toFixed(2);
-  if(!venc1 || !valor){ g('previewParcelas').innerHTML=''; return; }
-  var html = '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">PARCELAS GERADAS:</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+  if(!venc1 || !valor){ g('previewParcelas').innerHTML=''; _parcelasEdit=[]; return; }
+  var existentes = (_dupEditIdx!==null && db.duplicatas[_dupEditIdx]) ? (db.duplicatas[_dupEditIdx].parcelas||[]) : [];
+  _parcelasEdit = [];
   for(var i=0;i<nParc;i++){
     var d = new Date(venc1+'T00:00:00');
     d.setMonth(d.getMonth()+i);
-    var ds = d.toISOString().slice(0,10);
-    html += '<div style="background:#fff;border:1px solid var(--bdr);border-radius:6px;padding:5px 10px;font-size:12px">'+
-      '<div style="color:#64748b">Parcela '+(i+1)+'/'+nParc+'</div>'+
-      '<div style="font-weight:700">'+fmt(vpp)+'</div>'+
-      '<div style="color:#94a3b8">'+d.toLocaleDateString('pt-BR')+'</div></div>';
+    var ex = existentes[i]||{};
+    _parcelasEdit.push({venc:d.toISOString().slice(0,10), valor:vpp, paga:ex.paga||false});
   }
-  html += '</div>';
-  g('previewParcelas').innerHTML = html;
+  renderParcelasEdit();
+}
+
+function renderParcelasEdit(){
+  var el = g('previewParcelas');
+  if(!el) return;
+  if(!_parcelasEdit.length){ el.innerHTML=''; return; }
+  el.innerHTML = '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">PARCELAS — edite data e valor se precisar:</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+    _parcelasEdit.map(function(p,i){
+      return '<div style="background:#fff;border:1px solid var(--bdr);border-radius:6px;padding:6px 8px;font-size:12px">'+
+        '<div style="color:#64748b;margin-bottom:3px">Parcela '+(i+1)+'/'+_parcelasEdit.length+(p.paga?' · <b style="color:#166534">paga ✓</b>':'')+'</div>'+
+        '<input type="date" value="'+(p.venc||'')+'" onchange="editParcela('+i+',\'venc\',this.value)"'+(p.paga?' disabled':'')+' style="font-size:12px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;display:block;margin-bottom:3px">'+
+        '<input type="number" value="'+Number(p.valor||0).toFixed(2)+'" onchange="editParcela('+i+',\'valor\',this.value)"'+(p.paga?' disabled':'')+' style="font-size:12px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;display:block;width:110px">'+
+        '</div>';
+    }).join('')+'</div>'+
+    '<div id="parcSomaAviso" style="font-size:11px;margin-top:5px;color:#64748b"></div>';
+  avisoSomaParcelas();
+}
+
+function editParcela(i,campo,val){
+  if(!_parcelasEdit[i]) return;
+  if(campo==='venc') _parcelasEdit[i].venc = val;
+  else _parcelasEdit[i].valor = parseFloat(val)||0;
+  avisoSomaParcelas();
+}
+
+function avisoSomaParcelas(){
+  var el = g('parcSomaAviso'); if(!el) return;
+  var soma = _parcelasEdit.reduce(function(a,p){ return a+Number(p.valor||0); },0);
+  var total = parseFloat(g('dupValor').value)||0;
+  var dif = soma-total;
+  el.innerHTML = 'Soma das parcelas: <b>'+fmt(soma)+'</b>'+
+    (Math.abs(dif)>0.01?' · <span style="color:#b45309">⚠️ difere do valor total ('+fmt(total)+')</span>':' ✓');
 }
 
 function alterarTipoDup(){
@@ -2044,7 +2074,7 @@ function abrirModalDuplicata(idx){
   g('dupTipo').value='pagar'; g('dupCateg').value='Material';
   g('dupNParcelas').value='1'; g('dupForma').value='Boleto';
   g('dupLembrete').value='3'; g('dupPrioridade').value='normal';
-  g('previewParcelas').innerHTML='';
+  g('previewParcelas').innerHTML=''; _parcelasEdit=[];
   alterarTipoDup(); popularSelectDupObra();
   if(idx!==null){
     var d=db.duplicatas[idx];
@@ -2057,7 +2087,10 @@ function abrirModalDuplicata(idx){
     g('dupForma').value=d.forma||'Boleto'; g('dupNF').value=d.nf||'';
     g('dupLembrete').value=d.lembrete||'3'; g('dupPrioridade').value=d.prioridade||'normal';
     g('dupNotas').value='';
-    calcParcelas();
+    g('dupValorParc').value=(d.parcelas&&d.parcelas.length?(Number(d.valorTotal||0)/d.parcelas.length):0).toFixed(2);
+    // carrega as parcelas salvas (com datas/valores personalizados) em vez de regenerar
+    _parcelasEdit=(d.parcelas||[]).map(function(p){return {venc:p.venc,valor:Number(p.valor||0),paga:p.paga||false};});
+    renderParcelasEdit();
   }
   abrirModal('modalDuplicata');
 }
@@ -3319,14 +3352,18 @@ salvarDuplicata = async function() {
   var nParc = parseInt(g('dupNParcelas').value)||1;
   var vpp = valor/nParc;
 
-  // gera parcelas preservando pagamentos já feitos
+  // gera parcelas preservando pagamentos já feitos e datas/valores editados
   var existentes = atual ? (atual.parcelas||[]) : [];
   var parcelas = [];
   for(var i=0;i<nParc;i++){
     var dt = new Date(venc1+'T00:00:00');
     dt.setMonth(dt.getMonth()+i);
     var ex = existentes[i]||{};
-    parcelas.push({venc:dt.toISOString().slice(0,10), valor:vpp, paga:ex.paga||false,
+    var pe = (_parcelasEdit && _parcelasEdit[i]) ? _parcelasEdit[i] : null;
+    parcelas.push({
+      venc:(pe && pe.venc) ? pe.venc : dt.toISOString().slice(0,10),
+      valor:pe ? Number(pe.valor||0) : vpp,
+      paga:ex.paga||false,
       dataPgto:ex.dataPgto||null, valorPago:ex.valorPago||0, comprovante:ex.comprovante||''});
   }
   var totalPago = parcelas.reduce(function(a,p){return a+(p.paga?(p.valorPago||p.valor):0);},0);
@@ -3352,7 +3389,7 @@ salvarDuplicata = async function() {
   var payload = {
     tipo:g('dupTipo').value, categ:g('dupCateg').value, descricao:desc,
     fornecedor:g('dupParte').value, obra:obraId,
-    valor:valor, vencimento:venc1,
+    valor:valor, vencimento:(parcelas[0]&&parcelas[0].venc)||venc1,
     n_parc:nParc, parcelas:parcelas,
     status: todasPagas ? 'paga' : 'aberta', pago: totalPago,
     forma:g('dupForma').value, nf:g('dupNF').value,
