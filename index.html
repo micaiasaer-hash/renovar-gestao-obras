@@ -492,6 +492,7 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
         <option>Paredes e painéis</option><option>Cobertura</option><option>Revestimentos</option>
         <option>Pisos</option><option>Forros</option><option>Pinturas</option>
         <option>Instalações elétricas</option><option>Instalações hidrossanitárias</option>
+        <option>Limpeza de obra</option>
         <option>Real Drywall - Paredes</option><option>Real Drywall - Forros</option>
         <option>Real Drywall - Pisos</option><option>Real Drywall - Outros</option>
       </select>
@@ -674,6 +675,26 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
           <div class="fg"><label>Preço teto (R$/m²)</label><input type="number" id="ltPiTPU" oninput="calcGVT()" placeholder="0,00"></div>
           <div class="fg"><label>Cor / Referência</label><input id="ltPiCor" placeholder="Ex: Branco neve"></div>
         </div>
+      </div>
+      <!-- Limpeza de obra -->
+      <div style="border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+          <div style="font-size:11px;font-weight:700;color:#475569">🧹 LIMPEZA DE OBRA</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <select id="ltLBase" onchange="aplicarPrecoBase('L')" style="font-size:11px;padding:3px 7px;border:1px solid #bbf7d0;border-radius:6px;background:#f0fdf4">
+              <option value="RD">Referência mercado</option><option value="CUSTOM">Personalizado</option>
+            </select>
+            <select id="ltLRef" onchange="preencherPrecoRef('L')" style="font-size:11px;padding:3px 7px;border:1px solid #bbf7d0;border-radius:6px;background:#f0fdf4;max-width:180px">
+              <option value="">— selecionar item —</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+          <div class="fg"><label>Tipo</label><select id="ltLTipo"><option>Limpeza fina pós-obra</option><option>Limpeza grossa</option><option>Pós-obra pesada</option></select></div>
+          <div class="fg"><label>Área (m²)</label><input type="number" id="ltLM2" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>Preço (R$/m²)</label><input type="number" id="ltLPU" oninput="calcGVT()" placeholder="0,00" style="border-color:#bbf7d0"></div>
+        </div>
+        <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Observação</label><input id="ltLObs" placeholder="Retirada de entulho, nº de ambientes, acesso..."></div></div>
       </div>
       <!-- Demais serviços extras -->
       <div style="border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:8px">
@@ -1305,7 +1326,8 @@ window.SERVICO_MAP={
   N:  { cats:['Real Drywall - Outros','Paredes e painéis'] },
   P:  { cats:['Real Drywall - Pisos','Pisos'] },
   Pi: { cats:['Pinturas'] },
-  E:  { cats:['Instalações elétricas'] }
+  E:  { cats:['Instalações elétricas'] },
+  L:  { cats:['Limpeza de obra'] }
 };
 
 window.popularSelectRef = function(cod){
@@ -1326,7 +1348,7 @@ window.popularSelectRef = function(cod){
   if(puEl){ puEl.style.borderColor=''; puEl.style.background=''; }
   var src = (typeof PRECOS !== 'undefined') ? PRECOS : [];
   var filtrados = src.filter(function(p){
-    var okBase = (base==='RD') ? p[4]==='RD' : p[4]==='SEDOP';
+    var okBase = (base==='RD') ? (p[4]==='RD'||p[4]==='REF') : (p[4]==='SEDOP'||p[4]==='REF');
     return okBase && map.cats.indexOf(p[3]) > -1;
   });
   sel.innerHTML = '<option value="">— selecionar item —</option>' +
@@ -1348,7 +1370,7 @@ window.atualizarLabelBase = function(){
 };
 
 window.inicializarSelectsBase = function(){
-  ['F','D','N','P','Pi'].forEach(function(cod){ window.popularSelectRef(cod); });
+  ['F','D','N','P','Pi','L'].forEach(function(cod){ window.popularSelectRef(cod); });
   window.atualizarLabelBase();
 };
 
@@ -1393,7 +1415,15 @@ var PRECOS=[
   ["Piso Vinílico 3mm","m2",190.00,"Real Drywall - Pisos","RD"],
   ["Divisória Naval","m2",167.00,"Real Drywall - Outros","RD"],
   ["Rodapé Liso 7cm","m",55.00,"Real Drywall - Outros","RD"],
-  ["Rodapé Liso 10cm","m",75.00,"Real Drywall - Outros","RD"]
+  ["Rodapé Liso 10cm","m",75.00,"Real Drywall - Outros","RD"],
+  ["Limpeza grossa de obra (durante execução)","m2",12.00,"Limpeza de obra","REF"],
+  ["Limpeza fina pós-obra (entrega)","m2",18.00,"Limpeza de obra","REF"],
+  ["Limpeza pós-obra pesada (alta sujidade)","m2",25.00,"Limpeza de obra","REF"],
+  ["Auxiliar de limpeza (diária)","dia",250.00,"Limpeza de obra","REF"],
+  ["Mão de obra elétrica — hora técnica","h",100.00,"Instalações elétricas","REF"],
+  ["Mão de obra elétrica — diária eletricista","dia",400.00,"Instalações elétricas","REF"],
+  ["Mão de obra elétrica — ponto tomada/interruptor","pt",120.00,"Instalações elétricas","REF"],
+  ["Mão de obra elétrica — ponto de iluminação","pt",150.00,"Instalações elétricas","REF"]
 ];
 
 var KEY='gestaoObrasV7';
@@ -1561,6 +1591,8 @@ function getServicoGVT(){
   if(rM>0)s.push({nome:'Rodapé '+(gv('ltPRodape')||''),und:'m lin.',m2:rM,pu:rPU,total:rM*rPU,obs:''});
   var piPar=n('ltPiParede'),piPU=n('ltPiPU'),piTet=n('ltPiTeto'),piTPU=n('ltPiTPU');
   if(piPar>0||piTet>0)s.push({nome:'Pintura '+(gv('ltPiTipo')||'')+' '+(gv('ltPiCor')||''),und:'m²',m2:piPar+piTet,pu:(piPar*piPU+piTet*piTPU)/(piPar+piTet||1),total:piPar*piPU+piTet*piTPU,obs:''});
+  var lM2=n('ltLM2'),lPU=n('ltLPU');
+  if(lM2>0)s.push({nome:'Limpeza de obra — '+(gv('ltLTipo')||''),und:'m²',m2:lM2,pu:lPU,total:lM2*lPU,obs:gv('ltLObs')});
   // Elétrica — agrupa num único item com total calculado
   var totalElet=calcEletrica();
   if(totalElet>0){
@@ -1598,9 +1630,9 @@ function abrirModalGVT(idx){
   ed.gvt=idx;
   g('tituloGVT').textContent=idx!==null?'📋 Editar GVT':'📋 GVT — Guia de Visita Técnica · Renovar';
   var ids=['gNome','gCliente','gDoc','gEnd','gCidade','gContato','gTel','gResp','gObsGeral','gFotos','gObs',
-    'ltFTipo','ltFObs','ltDSist','ltDObs','ltNObs','ltPTipo','ltPRodape','ltPObs','ltPiCor'];
+    'ltFTipo','ltFObs','ltDSist','ltDObs','ltNObs','ltPTipo','ltPRodape','ltPObs','ltPiCor','ltLObs'];
   ids.forEach(function(id){if(g(id))g(id).value='';});
-  ['ltFM2','ltFPU','ltFPD','ltDM2','ltDPU','ltDPD','ltNM2','ltNPU','ltNH','ltPM2','ltPPU','ltPRodM','ltPRodPU','ltPiParede','ltPiPU','ltPiTeto','ltPiTPU','gInd'].forEach(function(id){if(g(id))g(id).value='';});
+  ['ltFM2','ltFPU','ltFPD','ltDM2','ltDPU','ltDPD','ltNM2','ltNPU','ltNH','ltPM2','ltPPU','ltPRodM','ltPRodPU','ltPiParede','ltPiPU','ltPiTeto','ltPiTPU','ltLM2','ltLPU','gInd'].forEach(function(id){if(g(id))g(id).value='';});
   g('gLucro').value=30;g('gReserva').value=5;
   if(idx!==null){
     var o=db.orcamentos[idx];
@@ -1623,6 +1655,7 @@ function abrirModalGVT(idx){
     if(lt.naval){g('ltNTipo').value=lt.naval.tipo||'Painel Cego';g('ltNM2').value=lt.naval.m2||'';g('ltNPU').value=lt.naval.pu||'';g('ltNH').value=lt.naval.h||'';g('ltNCor').value=lt.naval.cor||'';g('ltNObs').value=lt.naval.obs||'';}
     if(lt.piso){g('ltPTipo').value=lt.piso.tipo||'';g('ltPM2').value=lt.piso.m2||'';g('ltPPU').value=lt.piso.pu||'';g('ltPRodape').value=lt.piso.rodape||'';g('ltPRodM').value=lt.piso.rodM||'';g('ltPRodPU').value=lt.piso.rodPU||'';g('ltPObs').value=lt.piso.obs||'';}
     if(lt.pintura){g('ltPiTipo').value=lt.pintura.tipo||'Látex';g('ltPiParede').value=lt.pintura.parede||'';g('ltPiPU').value=lt.pintura.pu||'';g('ltPiTeto').value=lt.pintura.teto||'';g('ltPiTPU').value=lt.pintura.tpu||'';g('ltPiCor').value=lt.pintura.cor||'';}
+    if(lt.limpeza){g('ltLTipo').value=lt.limpeza.tipo||'Limpeza fina pós-obra';g('ltLM2').value=lt.limpeza.m2||'';g('ltLPU').value=lt.limpeza.pu||'';g('ltLObs').value=lt.limpeza.obs||'';}
     if(lt.demolicao){g('ltDemP').value=lt.demolicao.parede||'';g('ltDemPiso').value=lt.demolicao.piso||'';g('ltDemForro').value=lt.demolicao.forro||'Não';g('ltDemEnt').value=lt.demolicao.entulho||'Sim';g('ltDemObs').value=lt.demolicao.obs||'';}
     if(lt.eletrica){
       var e=lt.eletrica;
@@ -1681,6 +1714,7 @@ function salvarGVT(gerarProposta){
       naval:{tipo:g('ltNTipo').value,m2:nv('ltNM2'),pu:nv('ltNPU'),h:nv('ltNH'),cor:g('ltNCor').value,obs:g('ltNObs').value},
       piso:{tipo:g('ltPTipo').value,m2:nv('ltPM2'),pu:nv('ltPPU'),rodape:g('ltPRodape').value,rodM:nv('ltPRodM'),rodPU:nv('ltPRodPU'),obs:g('ltPObs').value},
       pintura:{tipo:g('ltPiTipo').value,parede:nv('ltPiParede'),pu:nv('ltPiPU'),teto:nv('ltPiTeto'),tpu:nv('ltPiTPU'),cor:g('ltPiCor').value},
+      limpeza:{tipo:g('ltLTipo').value,m2:nv('ltLM2'),pu:nv('ltLPU'),obs:g('ltLObs').value},
       eletrica:{
         padrao:g('ltEPadrao').value,carga:nv('ltECarga'),quadroExist:g('ltEQuadroExist').value,
         nDisj:nv('ltEDisj'),projeto:g('ltEProjeto').value,art:g('ltEArt').value,
