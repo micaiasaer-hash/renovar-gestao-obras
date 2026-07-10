@@ -676,6 +676,73 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
           <div class="fg"><label>Cor / Referência</label><input id="ltPiCor" placeholder="Ex: Branco neve"></div>
         </div>
       </div>
+      <!-- Serviços elétricos -->
+      <div style="border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+          <div style="font-size:11px;font-weight:700;color:#475569">⚡ SERVIÇOS ELÉTRICOS</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <select id="ltEBase" onchange="aplicarPrecoBase('E')" style="font-size:11px;padding:3px 7px;border:1px solid #fde68a;border-radius:6px;background:#fffbeb">
+              <option value="RD">Referência mercado</option><option value="SEDOP">SEDOP PA</option><option value="CUSTOM">Personalizado</option>
+            </select>
+            <select id="ltERef" onchange="preencherPrecoRef('E')" style="font-size:11px;padding:3px 7px;border:1px solid #fde68a;border-radius:6px;background:#fffbeb;max-width:200px">
+              <option value="">— selecionar item —</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+          <div class="fg"><label>Padrão de entrada</label><select id="ltEPadrao"><option>Monofásico</option><option>Bifásico</option><option>Trifásico</option><option>N/A</option></select></div>
+          <div class="fg"><label>Carga estimada (kW)</label><input type="number" id="ltECarga" placeholder="0"></div>
+          <div class="fg"><label>Quadro existente?</label><select id="ltEQuadroExist"><option>Sim, aproveitar</option><option>Trocar</option><option>Novo</option></select></div>
+          <div class="fg"><label>Nº disjuntores</label><input type="number" id="ltEDisj" placeholder="0"></div>
+        </div>
+        <div class="fr" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+          <div class="fg"><label>Projeto elétrico?</label><select id="ltEProjeto"><option>Não</option><option>Sim</option><option>Cliente fornece</option></select></div>
+          <div class="fg"><label>ART?</label><select id="ltEArt"><option>Não</option><option>Sim</option></select></div>
+          <div class="fg"><label>Tipo de instalação</label><select id="ltETipoInst"><option>Embutida</option><option>Aparente</option><option>Mista</option></select></div>
+          <div class="fg"><label>Eletroduto</label><select id="ltEEletroduto"><option>PVC</option><option>Metálico</option><option>Canaleta</option><option>Existente</option></select></div>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:#92400e;margin:8px 0 4px">PONTOS (quantidade × preço por ponto)</div>
+        <div class="fr" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="fg"><label>💡 Iluminação (qtd)</label><input type="number" id="ltEPtLuz" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/ponto ilum.</label><input type="number" id="ltEPtLuzPU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>🔌 Tomada 10A (qtd)</label><input type="number" id="ltEPtTom10" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/ponto tomada</label><input type="number" id="ltEPtTom10PU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>⚡ Força >200W (qtd)</label><input type="number" id="ltEPtForca" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/ponto força</label><input type="number" id="ltEPtForcaPU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>❄️ Ar-condicionado (qtd)</label><input type="number" id="ltEPtAC" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/ponto AC</label><input type="number" id="ltEPtACPU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>🌐 Rede/lógica (qtd)</label><input type="number" id="ltEPtRede" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/ponto rede</label><input type="number" id="ltEPtRedePU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>☎️ Telefone (qtd)</label><input type="number" id="ltEPtTel" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/ponto tel.</label><input type="number" id="ltEPtTelPU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>📹 Câmera/CFTV (qtd)</label><input type="number" id="ltEPtCCTV" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/ponto CFTV</label><input type="number" id="ltEPtCCTVPU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>🚨 Alarme (qtd)</label><input type="number" id="ltEPtAlarm" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/ponto alarme</label><input type="number" id="ltEPtAlarmPU" oninput="calcGVT()" placeholder="0,00"></div>
+        </div>
+        <div id="ltESubtotalPts" style="font-size:11px;color:#64748b;margin:2px 0 8px"></div>
+        <div style="font-size:10px;font-weight:700;color:#92400e;margin:8px 0 4px">INFRAESTRUTURA E MÃO DE OBRA</div>
+        <div class="fr" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="fg"><label>Quadro distribuição (qtd)</label><input type="number" id="ltEQD" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/quadro</label><input type="number" id="ltEQDPU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>Eletroduto (m)</label><input type="number" id="ltEEletM" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/m eletroduto</label><input type="number" id="ltEEletMPU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>Cabo 2,5mm² (m)</label><input type="number" id="ltECabo25" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/m cabo 2,5</label><input type="number" id="ltECabo25PU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>Cabo 4mm² (m)</label><input type="number" id="ltECabo4" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/m cabo 4</label><input type="number" id="ltECabo4PU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>Luminárias (qtd)</label><input type="number" id="ltELum" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/luminária</label><input type="number" id="ltELumPU" oninput="calcGVT()" placeholder="0,00"></div>
+          <div class="fg"><label>Mão de obra eletricista (h)</label><input type="number" id="ltEMOH" oninput="calcGVT()" placeholder="0"></div>
+          <div class="fg"><label>R$/hora eletricista</label><input type="number" id="ltEMOHPU" oninput="calcGVT()" placeholder="0,00"></div>
+        </div>
+        <div class="fr" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="fg"><label>Condições</label><select id="ltECondicoes"><option>Padrão residencial/comercial</option><option>Obra ocupada</option><option>Trabalho noturno</option><option>Altura >3m</option></select></div>
+          <div class="fg"><label>Dificuldade</label><select id="ltEDific"><option>Baixa</option><option>Média</option><option>Alta</option></select></div>
+          <div class="fg" style="grid-column:span 2"><label>Observação</label><input id="ltEObs" placeholder="Detalhes técnicos, pontos de atenção..."></div>
+        </div>
+        <div style="text-align:right;font-size:13px;font-weight:700;margin-top:6px;color:#92400e">Total elétrica: <span id="ltETotal">R$ 0,00</span></div>
+      </div>
       <!-- Limpeza de obra -->
       <div style="border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px">
@@ -1370,7 +1437,7 @@ window.atualizarLabelBase = function(){
 };
 
 window.inicializarSelectsBase = function(){
-  ['F','D','N','P','Pi','L'].forEach(function(cod){ window.popularSelectRef(cod); });
+  ['F','D','N','P','Pi','L','E'].forEach(function(cod){ window.popularSelectRef(cod); });
   window.atualizarLabelBase();
 };
 
@@ -1630,9 +1697,10 @@ function abrirModalGVT(idx){
   ed.gvt=idx;
   g('tituloGVT').textContent=idx!==null?'📋 Editar GVT':'📋 GVT — Guia de Visita Técnica · Renovar';
   var ids=['gNome','gCliente','gDoc','gEnd','gCidade','gContato','gTel','gResp','gObsGeral','gFotos','gObs',
-    'ltFTipo','ltFObs','ltDSist','ltDObs','ltNObs','ltPTipo','ltPRodape','ltPObs','ltPiCor','ltLObs'];
+    'ltFTipo','ltFObs','ltDSist','ltDObs','ltNObs','ltPTipo','ltPRodape','ltPObs','ltPiCor','ltLObs','ltEObs'];
   ids.forEach(function(id){if(g(id))g(id).value='';});
-  ['ltFM2','ltFPU','ltFPD','ltDM2','ltDPU','ltDPD','ltNM2','ltNPU','ltNH','ltPM2','ltPPU','ltPRodM','ltPRodPU','ltPiParede','ltPiPU','ltPiTeto','ltPiTPU','ltLM2','ltLPU','gInd'].forEach(function(id){if(g(id))g(id).value='';});
+  ['ltFM2','ltFPU','ltFPD','ltDM2','ltDPU','ltDPD','ltNM2','ltNPU','ltNH','ltPM2','ltPPU','ltPRodM','ltPRodPU','ltPiParede','ltPiPU','ltPiTeto','ltPiTPU','ltLM2','ltLPU','gInd',
+   'ltECarga','ltEDisj','ltEPtLuz','ltEPtLuzPU','ltEPtTom10','ltEPtTom10PU','ltEPtForca','ltEPtForcaPU','ltEPtAC','ltEPtACPU','ltEPtRede','ltEPtRedePU','ltEPtTel','ltEPtTelPU','ltEPtCCTV','ltEPtCCTVPU','ltEPtAlarm','ltEPtAlarmPU','ltEQD','ltEQDPU','ltEEletM','ltEEletMPU','ltECabo25','ltECabo25PU','ltECabo4','ltECabo4PU','ltELum','ltELumPU','ltEMOH','ltEMOHPU'].forEach(function(id){if(g(id))g(id).value='';});
   g('gLucro').value=30;g('gReserva').value=5;
   if(idx!==null){
     var o=db.orcamentos[idx];
