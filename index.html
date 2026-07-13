@@ -763,6 +763,14 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
         </div>
         <div class="fr"><div class="fg" style="grid-column:1/-1"><label>Observação</label><input id="ltLObs" placeholder="Retirada de entulho, nº de ambientes, acesso..."></div></div>
       </div>
+      <!-- Serviços avulsos (inclusão livre) -->
+      <div style="border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+          <div style="font-size:11px;font-weight:700;color:#475569">➕ SERVIÇOS AVULSOS — inclusão livre</div>
+          <button type="button" class="btn sm p" onclick="addServExtra()">+ Adicionar serviço</button>
+        </div>
+        <div id="servExtrasBox"><div style="font-size:12px;color:#94a3b8">Nenhum serviço avulso. Clique em "+ Adicionar serviço" para incluir qualquer item no orçamento.</div></div>
+      </div>
       <!-- Demais serviços extras -->
       <div style="border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:8px">
         <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:6px">DEMOLIÇÃO / SERVIÇOS PRELIMINARES</div>
@@ -1660,6 +1668,12 @@ function getServicoGVT(){
   if(piPar>0||piTet>0)s.push({nome:'Pintura '+(gv('ltPiTipo')||'')+' '+(gv('ltPiCor')||''),und:'m²',m2:piPar+piTet,pu:(piPar*piPU+piTet*piTPU)/(piPar+piTet||1),total:piPar*piPU+piTet*piTPU,obs:''});
   var lM2=n('ltLM2'),lPU=n('ltLPU');
   if(lM2>0)s.push({nome:'Limpeza de obra — '+(gv('ltLTipo')||''),und:'m²',m2:lM2,pu:lPU,total:lM2*lPU,obs:gv('ltLObs')});
+  // Serviços avulsos (inclusão livre)
+  (_servExtras||[]).forEach(function(sx){
+    var q=Number(sx.qtd)||0, pu=Number(sx.pu)||0;
+    if(q>0 && pu>0 && String(sx.nome||'').trim())
+      s.push({nome:String(sx.nome).trim(),und:sx.und||'un',m2:q,pu:pu,total:q*pu,obs:''});
+  });
   // Elétrica — agrupa num único item com total calculado
   var totalElet=calcEletrica();
   if(totalElet>0){
@@ -1702,6 +1716,7 @@ function abrirModalGVT(idx){
   ['ltFM2','ltFPU','ltFPD','ltDM2','ltDPU','ltDPD','ltNM2','ltNPU','ltNH','ltPM2','ltPPU','ltPRodM','ltPRodPU','ltPiParede','ltPiPU','ltPiTeto','ltPiTPU','ltLM2','ltLPU','gInd',
    'ltECarga','ltEDisj','ltEPtLuz','ltEPtLuzPU','ltEPtTom10','ltEPtTom10PU','ltEPtForca','ltEPtForcaPU','ltEPtAC','ltEPtACPU','ltEPtRede','ltEPtRedePU','ltEPtTel','ltEPtTelPU','ltEPtCCTV','ltEPtCCTVPU','ltEPtAlarm','ltEPtAlarmPU','ltEQD','ltEQDPU','ltEEletM','ltEEletMPU','ltECabo25','ltECabo25PU','ltECabo4','ltECabo4PU','ltELum','ltELumPU','ltEMOH','ltEMOHPU'].forEach(function(id){if(g(id))g(id).value='';});
   g('gLucro').value=30;g('gReserva').value=5;
+  _servExtras=[]; renderServExtras();
   if(idx!==null){
     var o=db.orcamentos[idx];
     g('gNome').value=o.nome||'';g('gCliente').value=o.cliente||'';g('gDoc').value=o.doc||'';
@@ -1724,6 +1739,8 @@ function abrirModalGVT(idx){
     if(lt.piso){g('ltPTipo').value=lt.piso.tipo||'';g('ltPM2').value=lt.piso.m2||'';g('ltPPU').value=lt.piso.pu||'';g('ltPRodape').value=lt.piso.rodape||'';g('ltPRodM').value=lt.piso.rodM||'';g('ltPRodPU').value=lt.piso.rodPU||'';g('ltPObs').value=lt.piso.obs||'';}
     if(lt.pintura){g('ltPiTipo').value=lt.pintura.tipo||'Látex';g('ltPiParede').value=lt.pintura.parede||'';g('ltPiPU').value=lt.pintura.pu||'';g('ltPiTeto').value=lt.pintura.teto||'';g('ltPiTPU').value=lt.pintura.tpu||'';g('ltPiCor').value=lt.pintura.cor||'';}
     if(lt.limpeza){g('ltLTipo').value=lt.limpeza.tipo||'Limpeza fina pós-obra';g('ltLM2').value=lt.limpeza.m2||'';g('ltLPU').value=lt.limpeza.pu||'';g('ltLObs').value=lt.limpeza.obs||'';}
+    _servExtras=(lt.extras||[]).map(function(sx){return {nome:sx.nome||'',qtd:Number(sx.qtd)||0,und:sx.und||'un',pu:Number(sx.pu)||0};});
+    renderServExtras();
     if(lt.demolicao){g('ltDemP').value=lt.demolicao.parede||'';g('ltDemPiso').value=lt.demolicao.piso||'';g('ltDemForro').value=lt.demolicao.forro||'Não';g('ltDemEnt').value=lt.demolicao.entulho||'Sim';g('ltDemObs').value=lt.demolicao.obs||'';}
     if(lt.eletrica){
       var e=lt.eletrica;
@@ -1783,6 +1800,7 @@ function salvarGVT(gerarProposta){
       piso:{tipo:g('ltPTipo').value,m2:nv('ltPM2'),pu:nv('ltPPU'),rodape:g('ltPRodape').value,rodM:nv('ltPRodM'),rodPU:nv('ltPRodPU'),obs:g('ltPObs').value},
       pintura:{tipo:g('ltPiTipo').value,parede:nv('ltPiParede'),pu:nv('ltPiPU'),teto:nv('ltPiTeto'),tpu:nv('ltPiTPU'),cor:g('ltPiCor').value},
       limpeza:{tipo:g('ltLTipo').value,m2:nv('ltLM2'),pu:nv('ltLPU'),obs:g('ltLObs').value},
+      extras:(_servExtras||[]).filter(function(sx){return String(sx.nome||'').trim();}),
       eletrica:{
         padrao:g('ltEPadrao').value,carga:nv('ltECarga'),quadroExist:g('ltEQuadroExist').value,
         nDisj:nv('ltEDisj'),projeto:g('ltEProjeto').value,art:g('ltEArt').value,
@@ -1987,6 +2005,44 @@ function proxVencimento(dup){
   var abertas = dup.parcelas.filter(function(p){ return !p.paga; });
   if(!abertas.length) return null;
   return abertas[0].venc;
+}
+
+// ── SERVIÇOS AVULSOS DO GVT ─────────────────────────────────
+var _servExtras = [];
+function addServExtra(){
+  _servExtras.push({nome:'', qtd:1, und:'un', pu:0});
+  renderServExtras();
+}
+function delServExtra(i){
+  _servExtras.splice(i,1);
+  renderServExtras();
+  if(typeof calcGVT==='function') calcGVT();
+}
+function updServExtra(i,campo,val){
+  if(!_servExtras[i]) return;
+  if(campo==='qtd'||campo==='pu') _servExtras[i][campo]=parseFloat(val)||0;
+  else _servExtras[i][campo]=val;
+  var tot=document.getElementById('sxTot'+i);
+  if(tot) tot.value=fmt((Number(_servExtras[i].qtd)||0)*(Number(_servExtras[i].pu)||0));
+}
+function renderServExtras(){
+  var box=g('servExtrasBox'); if(!box) return;
+  if(!_servExtras.length){
+    box.innerHTML='<div style="font-size:12px;color:#94a3b8">Nenhum serviço avulso. Clique em "+ Adicionar serviço" para incluir qualquer item no orçamento.</div>';
+    return;
+  }
+  var unds=['un','m²','m lin.','pt','h','dia','vb'];
+  box.innerHTML=_servExtras.map(function(s,i){
+    return '<div class="fr" style="grid-template-columns:minmax(160px,2fr) 80px 90px 110px 120px 40px;align-items:end;margin-bottom:4px">'+
+      '<div class="fg"><label>Serviço</label><input value="'+String(s.nome||'').replace(/"/g,'&quot;')+'" oninput="updServExtra('+i+',\'nome\',this.value)" placeholder="Ex: Retirada de entulho, içamento..."></div>'+
+      '<div class="fg"><label>Qtd</label><input type="number" value="'+(s.qtd||'')+'" oninput="updServExtra('+i+',\'qtd\',this.value);calcGVT()"></div>'+
+      '<div class="fg"><label>Unid.</label><select onchange="updServExtra('+i+',\'und\',this.value)">'+
+        unds.map(function(u){return '<option'+(s.und===u?' selected':'')+'>'+u+'</option>';}).join('')+'</select></div>'+
+      '<div class="fg"><label>Preço unit. (R$)</label><input type="number" value="'+(s.pu||'')+'" oninput="updServExtra('+i+',\'pu\',this.value);calcGVT()"></div>'+
+      '<div class="fg"><label>Total</label><input id="sxTot'+i+'" value="'+fmt((Number(s.qtd)||0)*(Number(s.pu)||0))+'" readonly style="background:#f8fafc"></div>'+
+      '<button type="button" class="btn sm d" onclick="delServExtra('+i+')" title="Remover" style="margin-bottom:2px">✕</button>'+
+    '</div>';
+  }).join('');
 }
 
 var _parcelasEdit = [];
@@ -3059,7 +3115,9 @@ function buildLtGVT(){
       moH:N('ltEMOH'),moHPU:N('ltEMOHPU'),
       condicoes:V('ltECondicoes'),dific:V('ltEDific'),obs:V('ltEObs')
     },
-    demolicao:{parede:N('ltDemP'),piso:N('ltDemPiso'),forro:V('ltDemForro'),entulho:V('ltDemEnt'),obs:V('ltDemObs')}
+    demolicao:{parede:N('ltDemP'),piso:N('ltDemPiso'),forro:V('ltDemForro'),entulho:V('ltDemEnt'),obs:V('ltDemObs')},
+    limpeza:{tipo:V('ltLTipo'),m2:N('ltLM2'),pu:N('ltLPU'),obs:V('ltLObs')},
+    extras:(_servExtras||[]).filter(function(sx){return String(sx.nome||'').trim();})
   };
 }
 
