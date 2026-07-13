@@ -2644,8 +2644,21 @@ function verOrcamento(idx){
   } else {
     footer+='<span class="badge bdk" style="align-self:center">🏗 Já em obra</span>';
   }
+  footer+='<button class="btn d" onclick="excluirGVT('+idx+')">🗑 Excluir GVT</button>';
   g('verOrcFooter').innerHTML=footer;
   abrirModal('modalVerOrc');
+}
+
+async function excluirGVT(i){
+  var o=db.orcamentos[i];
+  if(!o) return;
+  if(o.status==='convertido' && !confirm('⚠️ Este GVT já foi convertido em obra.\nA obra NÃO será excluída — apenas o GVT/orçamento.\nContinuar?')) return;
+  if(!confirm('Excluir o GVT "'+o.nome+'"?\nEsta ação não pode ser desfeita.')) return;
+  if(o.id){
+    var res=await supa.from('orcamentos').delete().eq('id',o.id);
+    if(res.error){ alert('Erro ao excluir: '+res.error.message); return; }
+  }
+  await load(); closeModal(); renderOrcamentos();
 }
 
 function calcObra(o){
