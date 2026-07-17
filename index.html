@@ -1603,7 +1603,10 @@ async function load(){
     db.rdos     = extra[2].data||[];
     db.almoxItens = extra[3].data||[];
     db.almoxMovs  = extra[4].data||[];
-    if(db.obras.length) obraAtual=db.obras[0];
+    if(db.obras.length){
+      var _prevObraId = obraAtual ? obraAtual.id : null;
+      obraAtual = (_prevObraId && db.obras.find(function(o){ return String(o.id)===String(_prevObraId); })) || db.obras[0];
+    } else { obraAtual=null; }
   } catch(e){ console.error('Erro ao carregar:', e); }
 }
 function fmt(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
