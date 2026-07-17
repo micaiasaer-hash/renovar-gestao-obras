@@ -407,6 +407,10 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
       <select id="gdTipo" style="font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px">
         <option>🍽 Almoço</option><option>🚌 Diária</option><option>📦 Outro</option>
       </select>
+      <select id="gdColab" onchange="gdColabManual()" style="font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px;min-width:150px">
+        <option value="">— Colaborador —</option>
+      </select>
+      <input type="text" id="gdColabLivre" placeholder="Nome do colaborador" style="display:none;min-width:140px;font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px">
       <input type="text" id="gdDesc" placeholder="Obs (opcional)" style="flex:1;min-width:120px;font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px">
       <input type="number" id="gdValor" placeholder="R$ 0,00" style="width:110px;font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px">
       <button class="btn p" onclick="addGasto()">+ Lançar</button>
@@ -1634,7 +1638,7 @@ async function load(){
     });
     db.gastos = (gastosRes.data||[]).map(function(r){
       return {id:r.id,data:r.data,obra:r.obra,tipo:r.tipo||'Almoço',
-        desc:r.descricao||'',valor:Number(r.valor||0), _sbId:r.id};
+        colab:r.colaborador||'',desc:r.descricao||'',valor:Number(r.valor||0), _sbId:r.id};
     });
     var extra = await Promise.all([
       supa.from('usuarios').select('*').order('nome'),
@@ -3603,17 +3607,31 @@ function _gdNomeObra(id){
   return o?o.nome:'Sem obra';
 }
 
+function gdColabManual(){
+  var livre=g('gdColabLivre');
+  if(!livre) return;
+  livre.style.display = g('gdColab').value==='__manual__' ? 'block' : 'none';
+  if(g('gdColab').value==='__manual__') livre.focus();
+}
+
+function gdFuncColab(nome){
+  var c=(db.colaboradores||[]).find(function(x){return x.nome===nome;});
+  return c?(c.func||''):'';
+}
+
 async function addGasto(){
   var valor=parseFloat(g('gdValor').value)||0;
   if(!valor){ alert('Informe o valor.'); return; }
   var tipo=g('gdTipo').value.replace(/^[^\wÀ-ú]+\s*/,'');
+  var colab=g('gdColab').value==='__manual__' ? g('gdColabLivre').value.trim() : g('gdColab').value;
   var res=await supa.from('gastos_diarios').insert({
     data:g('gdData').value||hojeLocal(),
     obra:g('gdObra').value||null,
-    tipo:tipo, descricao:g('gdDesc').value||null, valor:valor
+    tipo:tipo, colaborador:colab||null,
+    descricao:g('gdDesc').value||null, valor:valor
   });
   if(res.error){ alert('Erro: '+res.error.message); return; }
-  g('gdValor').value=''; g('gdDesc').value='';
+  g('gdValor').value=''; g('gdDesc').value=''; g('gdColabLivre').value='';
   await load(); renderGastos();
 }
 
@@ -3632,6 +3650,14 @@ function renderGastos(){
     var prev=sel.value;
     sel.innerHTML='<option value="">— Obra —</option>'+(db.obras||[]).filter(function(o){return !o.finalizada&&o.status!=='Finalizada'&&o.status!=='Cancelada';}).map(function(o){return '<option value="'+o.id+'">'+o.nome+'</option>';}).join('');
     if(prev) sel.value=prev;
+  }
+  var selC=g('gdColab');
+  if(selC){
+    var prevC=selC.value;
+    selC.innerHTML='<option value="">— Colaborador —</option>'+
+      (db.colaboradores||[]).map(function(c){return '<option value="'+String(c.nome).replace(/"/g,'&quot;')+'">'+c.nome+(c.func?' · '+c.func:'')+'</option>';}).join('')+
+      '<option value="__manual__">✏️ Digitar nome...</option>';
+    if(prevC) selC.value=prevC;
   }
   if(g('gdData') && !g('gdData').value) g('gdData').value=hojeLocal();
   var w=_gdSemana(), ini=_gdISO(w.ini), fim=_gdISO(w.fim);
@@ -3668,7 +3694,9 @@ function renderGastos(){
         var d=new Date(x.data+'T00:00:00');
         return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;border-top:1px solid #f1f5f9;padding:5px 0">'+
           '<span style="color:#64748b;width:70px">'+dias[d.getDay()]+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>'+
-          '<span style="flex:1">'+(_gdTipoEmoji[x.tipo]||'')+' '+x.tipo+(x.desc?' · <span style="color:#94a3b8">'+x.desc+'</span>':'')+'</span>'+
+          '<span style="flex:1">'+(_gdTipoEmoji[x.tipo]||'')+' '+x.tipo+
+            (x.colab?' · <b>'+x.colab+'</b>'+(gdFuncColab(x.colab)?' <span style="color:#94a3b8">('+gdFuncColab(x.colab)+')</span>':''):'')+
+            (x.desc?' · <span style="color:#94a3b8">'+x.desc+'</span>':'')+'</span>'+
           '<span style="font-weight:600;margin-right:8px">'+fmt(x.valor)+'</span>'+
           '<button class="btn sm d" onclick="delGasto('+x.id+')" style="padding:1px 7px">✕</button></div>';
       }).join('')+'</div>';
