@@ -203,6 +203,7 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   <button onclick="showPage('clientes',this)">👤 Clientes</button>
   <button onclick="showPage('colaboradores',this)">👷 Colaboradores</button>
   <button onclick="showPage('folha',this)">💵 Folha</button>
+  <button onclick="showPage('gastos',this)">💸 Gastos diários</button>
   <button onclick="showPage('progresso',this)">📈 Acompanhamento</button>
   <button onclick="showPage('tabela',this)">💲 Preços</button>
   <button onclick="showPage('usuarios',this)">🔐 Usuários</button>
@@ -391,6 +392,45 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
 
   <div id="listaDuplicatas"></div>
 </div>
+<!-- GASTOS DIÁRIOS -->
+<div id="gastos" class="page">
+  <div class="sh">
+    <h2 style="font-size:16px;font-weight:700">💸 Gastos Diários</h2>
+  </div>
+
+  <!-- Lançamento rápido -->
+  <div style="background:#fff;border:1px solid var(--bdr);border-radius:10px;padding:12px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:.5px;margin-bottom:8px">LANÇAMENTO RÁPIDO</div>
+    <div class="frow" style="margin-bottom:0">
+      <input type="date" id="gdData" style="font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px">
+      <select id="gdObra" style="font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px;min-width:160px"></select>
+      <select id="gdTipo" style="font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px">
+        <option>🍽 Almoço</option><option>🚌 Diária</option><option>📦 Outro</option>
+      </select>
+      <input type="text" id="gdDesc" placeholder="Obs (opcional)" style="flex:1;min-width:120px;font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px">
+      <input type="number" id="gdValor" placeholder="R$ 0,00" style="width:110px;font-size:13px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px">
+      <button class="btn p" onclick="addGasto()">+ Lançar</button>
+    </div>
+  </div>
+
+  <!-- Navegação de semana -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn sm" onclick="mudarSemanaGastos(-1)">‹</button>
+      <span id="gdSemanaLabel" style="font-size:13px;font-weight:700"></span>
+      <button class="btn sm" onclick="mudarSemanaGastos(1)">›</button>
+      <button class="btn sm" onclick="_gdSemanaOff=0;renderGastos()">Hoje</button>
+    </div>
+    <span style="font-size:11px;color:#94a3b8">semana fecha na sexta-feira</span>
+  </div>
+
+  <!-- Cards resumo -->
+  <div id="gdCards" class="g2" style="margin-bottom:14px"></div>
+
+  <!-- Por obra -->
+  <div id="gdPorObra"></div>
+</div>
+
 <!-- FOLHA DE PAGAMENTO -->
 <div id="folha" class="page">
   <div class="sh">
@@ -1510,7 +1550,7 @@ var pchart=null,pvchart=null;
 function save(){ /* Supabase - salva nas funções individuais */ }
 async function load(){
   try {
-    var [orc,obras,mats,mos,inds,fluxo,dups,clis,colabs,folhaRes] = await Promise.all([
+    var [orc,obras,mats,mos,inds,fluxo,dups,clis,colabs,folhaRes,gastosRes] = await Promise.all([
       supa.from('orcamentos').select('*').order('created_at',{ascending:false}),
       supa.from('obras').select('*').order('created_at',{ascending:false}),
       supa.from('materiais').select('*'),
@@ -1520,7 +1560,8 @@ async function load(){
       supa.from('duplicatas').select('*'),
       supa.from('clientes').select('*'),
       supa.from('colaboradores').select('*'),
-      supa.from('folha').select('*').order('created_at',{ascending:false})
+      supa.from('folha').select('*').order('created_at',{ascending:false}),
+      supa.from('gastos_diarios').select('*').order('data',{ascending:false})
     ]);
     db.orcamentos = (orc.data||[]).map(function(r){
       var o=JSON.parse(JSON.stringify(r));
@@ -1590,6 +1631,10 @@ async function load(){
         competencia:r.competencia||'',valor:Number(r.valor||0),
         dataPgto:r.data_pgto||'',status:r.status||'pendente',
         forma:r.forma||'',obs:r.obs||'', _sbId:r.id};
+    });
+    db.gastos = (gastosRes.data||[]).map(function(r){
+      return {id:r.id,data:r.data,obra:r.obra,tipo:r.tipo||'Almoço',
+        desc:r.descricao||'',valor:Number(r.valor||0), _sbId:r.id};
     });
     var extra = await Promise.all([
       supa.from('usuarios').select('*').order('nome'),
@@ -3007,7 +3052,7 @@ function render(){
   renderMat();renderMO();renderInd();renderFx();
   renderPrevReal();renderFechamento();renderTabela();
   renderClientes();renderColaboradores();
-  renderDuplicatas();renderAlertasDup();renderFolha();
+  renderDuplicatas();renderAlertasDup();renderFolha();renderGastos();
   popularSelectColab();popularSelectCliente();
   renderEstoque();
 }
@@ -3538,6 +3583,97 @@ confirmarBaixa = async function(){
   _baixaIdx = null;
   closeModal(); renderDuplicatas(); renderAlertasDup();
 };
+
+// ── GASTOS DIÁRIOS ───────────────────────────────────────────
+var _gdSemanaOff = 0;
+function _gdISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _gdSemana(){ // semana sáb → sex (fecha na sexta)
+  var hoje=new Date(hojeLocal()+'T00:00:00');
+  var dow=hoje.getDay();
+  var addFim=(dow===6)?6:(5-dow);
+  var fim=new Date(hoje); fim.setDate(fim.getDate()+addFim+_gdSemanaOff*7);
+  var ini=new Date(fim); ini.setDate(ini.getDate()-6);
+  return {ini:ini, fim:fim};
+}
+function mudarSemanaGastos(dir){ _gdSemanaOff+=dir; renderGastos(); }
+
+var _gdTipoEmoji={'Almoço':'🍽','Diária':'🚌','Outro':'📦'};
+function _gdNomeObra(id){
+  var o=(db.obras||[]).find(function(x){return String(x.id)===String(id);});
+  return o?o.nome:'Sem obra';
+}
+
+async function addGasto(){
+  var valor=parseFloat(g('gdValor').value)||0;
+  if(!valor){ alert('Informe o valor.'); return; }
+  var tipo=g('gdTipo').value.replace(/^[^\wÀ-ú]+\s*/,'');
+  var res=await supa.from('gastos_diarios').insert({
+    data:g('gdData').value||hojeLocal(),
+    obra:g('gdObra').value||null,
+    tipo:tipo, descricao:g('gdDesc').value||null, valor:valor
+  });
+  if(res.error){ alert('Erro: '+res.error.message); return; }
+  g('gdValor').value=''; g('gdDesc').value='';
+  await load(); renderGastos();
+}
+
+async function delGasto(id){
+  if(!confirm('Excluir este lançamento?')) return;
+  var res=await supa.from('gastos_diarios').delete().eq('id',id);
+  if(res.error){ alert('Erro: '+res.error.message); return; }
+  await load(); renderGastos();
+}
+
+function renderGastos(){
+  var cards=g('gdCards'); if(!cards) return;
+  // select de obras (ativas primeiro)
+  var sel=g('gdObra');
+  if(sel){
+    var prev=sel.value;
+    sel.innerHTML='<option value="">— Obra —</option>'+(db.obras||[]).filter(function(o){return !o.finalizada&&o.status!=='Finalizada'&&o.status!=='Cancelada';}).map(function(o){return '<option value="'+o.id+'">'+o.nome+'</option>';}).join('');
+    if(prev) sel.value=prev;
+  }
+  if(g('gdData') && !g('gdData').value) g('gdData').value=hojeLocal();
+  var w=_gdSemana(), ini=_gdISO(w.ini), fim=_gdISO(w.fim);
+  var lb=g('gdSemanaLabel');
+  if(lb) lb.textContent=w.ini.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' — '+w.fim.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+(_gdSemanaOff===0?' (semana atual)':'');
+  var regs=(db.gastos||[]).filter(function(x){ return x.data>=ini && x.data<=fim; });
+  var tot=0, alm=0, dia=0;
+  regs.forEach(function(x){ tot+=x.valor; if(x.tipo==='Almoço')alm+=x.valor; else if(x.tipo==='Diária')dia+=x.valor; });
+  cards.innerHTML=
+    '<div class="mc '+(tot>0?'bad':'')+'"><div class="lb">Total da semana</div><div class="vl">'+fmt(tot)+'</div><div class="sb">'+regs.length+' lançamento(s) · fecha sex '+w.fim.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</div></div>'+
+    '<div class="mc"><div class="lb">🍽 Almoços</div><div class="vl">'+fmt(alm)+'</div></div>'+
+    '<div class="mc"><div class="lb">🚌 Diárias</div><div class="vl">'+fmt(dia)+'</div></div>'+
+    '<div class="mc"><div class="lb">📦 Outros</div><div class="vl">'+fmt(tot-alm-dia)+'</div></div>';
+  // agrupado por obra
+  var porObra={};
+  regs.forEach(function(x){
+    var k=x.obra||'__sem__';
+    if(!porObra[k]) porObra[k]={total:0,itens:[]};
+    porObra[k].total+=x.valor; porObra[k].itens.push(x);
+  });
+  var box=g('gdPorObra');
+  var keys=Object.keys(porObra).sort(function(a,b){return porObra[b].total-porObra[a].total;});
+  if(!keys.length){ box.innerHTML='<div style="background:#fff;border:1px solid var(--bdr);border-radius:10px;text-align:center;color:#94a3b8;padding:24px;font-size:13px">Nenhum gasto nesta semana.</div>'; return; }
+  var dias=['dom','seg','ter','qua','qui','sex','sáb'];
+  box.innerHTML=keys.map(function(k){
+    var gpo=porObra[k];
+    var nome=k==='__sem__'?'📌 Sem obra':'🏗 '+_gdNomeObra(k);
+    gpo.itens.sort(function(a,b){return a.data<b.data?-1:1;});
+    return '<div style="background:#fff;border:1px solid var(--bdr);border-radius:10px;padding:12px;margin-bottom:10px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+        '<div style="font-weight:700;font-size:13px">'+nome+'</div>'+
+        '<div style="font-weight:700;font-size:15px;color:var(--dan)">'+fmt(gpo.total)+'</div></div>'+
+      gpo.itens.map(function(x){
+        var d=new Date(x.data+'T00:00:00');
+        return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;border-top:1px solid #f1f5f9;padding:5px 0">'+
+          '<span style="color:#64748b;width:70px">'+dias[d.getDay()]+' '+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>'+
+          '<span style="flex:1">'+(_gdTipoEmoji[x.tipo]||'')+' '+x.tipo+(x.desc?' · <span style="color:#94a3b8">'+x.desc+'</span>':'')+'</span>'+
+          '<span style="font-weight:600;margin-right:8px">'+fmt(x.valor)+'</span>'+
+          '<button class="btn sm d" onclick="delGasto('+x.id+')" style="padding:1px 7px">✕</button></div>';
+      }).join('')+'</div>';
+  }).join('');
+}
 
 // ── FOLHA DE PAGAMENTO ───────────────────────────────────────
 var _fpEditIdx = null;
@@ -4092,13 +4228,13 @@ var TELAS_APP=[
   {id:'indiretos',label:'🧾 Indiretos'},{id:'fluxo',label:'💳 Fluxo de caixa'},
   {id:'prevReal',label:'📈 Prev × Real'},{id:'fechamento',label:'🏁 Fechamento'},
   {id:'duplicatas',label:'💳 Duplicatas'},{id:'clientes',label:'👤 Clientes'},
-  {id:'colaboradores',label:'👷 Colaboradores'},{id:'folha',label:'💵 Folha'},{id:'tabela',label:'💲 Preços'},
+  {id:'colaboradores',label:'👷 Colaboradores'},{id:'folha',label:'💵 Folha'},{id:'gastos',label:'💸 Gastos diários'},{id:'tabela',label:'💲 Preços'},
   {id:'usuarios',label:'🔐 Usuários'}
 ];
 var PERFIS={
   admin:{label:'👑 Admin',telas:TELAS_APP.map(function(t){return t.id;})},
-  obra:{label:'🏗 Obra',telas:['dash','obras','progresso','materiais','estoque','maoObra','colaboradores']},
-  financeiro:{label:'💰 Financeiro',telas:['dash','duplicatas','fluxo','fechamento','indiretos','prevReal','folha']},
+  obra:{label:'🏗 Obra',telas:['dash','obras','progresso','materiais','estoque','maoObra','colaboradores','gastos']},
+  financeiro:{label:'💰 Financeiro',telas:['dash','duplicatas','fluxo','fechamento','indiretos','prevReal','folha','gastos']},
   comercial:{label:'📋 Comercial',telas:['dash','orcamentos','clientes','tabela']}
 };
 var usuarioAtual=null;
