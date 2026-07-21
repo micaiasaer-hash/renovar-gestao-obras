@@ -362,6 +362,9 @@ input[type=range].prog{width:100%;accent-color:#0ea87e}
   <!-- Alertas de vencimento -->
   <div id="alertasDup" style="margin-bottom:12px"></div>
 
+  <!-- Área separada: Notas a Receber -->
+  <div id="areaReceber"></div>
+
   <!-- Cards resumo -->
   <div id="cardsDup" class="g2" style="margin-bottom:14px"></div>
 
@@ -3560,6 +3563,76 @@ delDuplicata = async function(i) {
   if(d && d.id) await supa.from('duplicatas').delete().eq('id', d.id);
   await load(); renderDuplicatas();
 };
+
+// ── ÁREA NOTAS A RECEBER ─────────────────────────────────────
+function abrirModalNotaReceber(){
+  abrirModalDuplicata();
+  g('dupTipo').value='receber';
+  alterarTipoDup();
+}
+
+async function uploadNotaReceber(idx, inp){
+  var f=inp.files&&inp.files[0]; if(!f) return;
+  var d=db.duplicatas[idx]; if(!d||!d.id) return;
+  var ext=(f.name.indexOf('.')>-1?f.name.split('.').pop():'bin').toLowerCase().replace(/[^a-z0-9]/g,'');
+  var path='duplicatas/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'-nota-fiscal.'+ext;
+  var up=await supa.storage.from('documentos').upload(path,f,{contentType:f.type||'application/octet-stream'});
+  if(up.error){ alert('Erro ao enviar a nota: '+up.error.message); return; }
+  var pub=supa.storage.from('documentos').getPublicUrl(path);
+  var anexos=(d.anexos||[]).slice();
+  anexos.push({tipo:'nota-fiscal',nome:f.name,url:pub.data.publicUrl,path:path,enviado:new Date().toLocaleString('pt-BR')});
+  var res=await supa.from('duplicatas').update({anexos:anexos}).eq('id',d.id);
+  if(res.error){ alert('Erro: '+res.error.message); return; }
+  await load(); renderDuplicatas();
+}
+
+function _cardNotaReceber(r){
+  var d=r.d, i=r.i;
+  var anexos=(d.anexos||[]).map(function(a){
+    return '<a href="'+a.url+'" target="_blank" rel="noopener" class="btn sm" style="text-decoration:none">📄 '+(a.nome.length>22?a.nome.slice(0,20)+'…':a.nome)+'</a>';
+  }).join(' ');
+  var parc=(d.parcelas||[]).map(function(p,pi){
+    var dt=p.venc?new Date(p.venc+'T00:00').toLocaleDateString('pt-BR'):'—';
+    var atras=!p.paga&&p.venc&&p.venc<hojeLocal();
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;border-top:1px solid #f1f5f9;padding:5px 0">'+
+      '<span style="'+(atras?'color:#b91c1c;font-weight:600':'')+'">📅 '+dt+(atras?' · atrasada':'')+' <span style="color:#94a3b8">· parcela '+(pi+1)+'/'+d.parcelas.length+'</span></span>'+
+      '<span style="font-weight:700;margin-left:auto">'+fmt(p.valor)+'</span>'+
+      (p.paga?'<span class="badge bg">✓ Recebida</span>':'<button class="btn sm s" onclick="abrirBaixa('+i+','+pi+')">✅ Receber</button>')+
+    '</div>';
+  }).join('');
+  return '<div style="background:#fff;border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:8px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:4px">'+
+      '<div><b style="font-size:13px">'+d.desc+'</b>'+
+      '<div style="font-size:11px;color:#64748b">'+(d.parte||'—')+(d.nf?' · NF: '+d.nf:'')+'</div></div>'+
+      '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">'+anexos+
+        '<input type="file" id="nrFile'+i+'" style="display:none" accept=".pdf,image/*" onchange="uploadNotaReceber('+i+',this)">'+
+        '<button class="btn sm" onclick="g(\'nrFile'+i+'\').click()">📎 Anexar nota</button>'+
+        '<button class="btn sm" onclick="abrirModalDuplicata('+i+')">✏️ Datas/valores</button>'+
+      '</div></div>'+parc+'</div>';
+}
+
+function renderAreaReceber(){
+  var el=g('areaReceber'); if(!el) return;
+  var regs=[];
+  (db.duplicatas||[]).forEach(function(d,i){ if(d.tipo==='receber') regs.push({d:d,i:i}); });
+  var totAberto=0, totRecebido=0;
+  regs.forEach(function(r){ (r.d.parcelas||[]).forEach(function(p){
+    if(p.paga) totRecebido+=Number(p.valorPago||p.valor||0); else totAberto+=Number(p.valor||0);
+  }); });
+  el.innerHTML='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;margin-bottom:14px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+      '<div style="font-size:12px;font-weight:700;color:#166534;letter-spacing:.5px">📥 NOTAS A RECEBER'+
+        ' <span style="font-weight:400;color:#64748b">· em aberto: <b style="color:#166534">'+fmt(totAberto)+'</b> · recebido: '+fmt(totRecebido)+'</span></div>'+
+      '<button class="btn s sm" onclick="abrirModalNotaReceber()">+ Nova nota a receber</button>'+
+    '</div>'+
+    (regs.length ? regs.map(_cardNotaReceber).join('') :
+      '<div style="font-size:12px;color:#94a3b8">Nenhuma nota a receber. Clique em <b>+ Nova nota a receber</b>, suba a nota e defina as datas combinadas.</div>')+
+  '</div>';
+}
+
+// garante que a área é redesenhada junto com a lista de duplicatas
+var _origRenderDuplicatasArea = renderDuplicatas;
+renderDuplicatas = function(){ _origRenderDuplicatasArea(); renderAreaReceber(); };
 
 // Confirmar pagamento de parcela — persiste no Supabase
 var _origConfirmarBaixa = confirmarBaixa;
